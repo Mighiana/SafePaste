@@ -1,0 +1,26 @@
+{
+  "status": "conceptual-policy-for-ai-assisted-development",
+  "note": "Exact enforcement depends on the local AI tool. This file documents the intended SafePaste permission policy and should not be treated as proof of runtime enforcement.",
+  "requiresHumanApproval": [
+    "package installation or dependency changes",
+    "network-related commands such as curl, wget, npm install, package registry access, or cloud deployment",
+    "external services, analytics, telemetry, APIs, or CDNs",
+    "destructive file or git operations",
+    "bypassing or disabling hooks"
+  ],
+  "discouragedOrDenied": [
+    "persisting pasted logs in browser storage or files",
+    "adding backend storage",
+    "using remote fonts or third-party scripts",
+    "removing failing tests to create a passing run",
+    "hardcoding expected sanitizer outputs in production logic"
+  ],
+  "allowedLocalCommands": [
+    "node tests/test-sanitizer.js",
+    "node evals/run-evals.js",
+    "static grep or ripgrep privacy checks"
+  ],
+  "hooks": {
+    "preCommitSecretScan": ".claude/hooks/pre-commit.sh"
+  }
+}

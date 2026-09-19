@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SafePaste</title>
+    <meta name="description" content="Local browser-based log sanitizer for reviewing sensitive data before sharing logs.">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <p class="eyebrow">Local-only log review</p>
+        <h1>SafePaste</h1>
+        <p class="intro">Paste technical text, redact likely sensitive values in your browser, review the result, then copy only what you choose to share.</p>
+        <p class="privacy-note">No backend. No analytics. No browser storage. No network upload.</p>
+      </div>
+    </header>
+
+    <main class="workspace" aria-labelledby="workspace-title">
+      <section class="toolbar" aria-labelledby="workspace-title">
+        <div>
+          <h2 id="workspace-title">Sanitizer</h2>
+          <p id="status-message" class="status" role="status" aria-live="polite">Ready. Paste logs to begin.</p>
+        </div>
+        <label class="toggle">
+          <input id="redact-ip" type="checkbox" checked>
+          <span>Redact IPv4 addresses</span>
+        </label>
+      </section>
+
+      <section class="panes" aria-label="Original and sanitized text">
+        <div class="pane">
+          <label for="input-text">Original text</label>
+          <textarea id="input-text" spellcheck="false" placeholder="Paste logs or technical text here"></textarea>
+        </div>
+
+        <div class="pane">
+          <label for="output-text">Sanitized text</label>
+          <textarea id="output-text" spellcheck="false" readonly placeholder="Sanitized output appears here"></textarea>
+        </div>
+      </section>
+
+      <section class="actions" aria-label="Actions">
+        <button id="sanitize-button" type="button">Sanitize</button>
+        <button id="copy-button" type="button" disabled>Copy sanitized text</button>
+        <button id="clear-button" type="button" class="secondary">Clear</button>
+      </section>
+
+      <section class="summary" aria-labelledby="summary-title">
+        <div>
+          <h2 id="summary-title">Review Summary</h2>
+          <p><strong id="redaction-count">0</strong> redactions found</p>
+        </div>
+        <div>
+          <h3>Categories Detected</h3>
+          <ul id="category-list" class="category-list" aria-label="Detected sensitive data categories">
+            <li>No sensitive categories detected yet.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="src/sanitizer.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

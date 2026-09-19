@@ -1,0 +1,1658 @@
+[
+  {
+    "id": "EV-001",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "api_key=abc1234567890SECRET request_id=req-42",
+    "expected_behavior": "Redact the API key value and preserve request context.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Common key=value API keys are high-risk credentials.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "abc1234567890SECRET"
+      ],
+      "contains": [
+        "api_key=",
+        "[REDACTED_API_KEY]",
+        "request_id=req-42"
+      ],
+      "categoriesInclude": [
+        "API_KEY"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-002",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "access_token=tok_1234567890abcdef status=401",
+    "expected_behavior": "Redact the access token value while preserving status code.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Access tokens can authorize account access.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "tok_1234567890abcdef"
+      ],
+      "contains": [
+        "access_token=",
+        "[REDACTED_API_KEY]",
+        "status=401"
+      ],
+      "categoriesInclude": [
+        "API_KEY"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-003",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "secret_key = zzz999888777666555 region=dev",
+    "expected_behavior": "Redact the secret key and preserve region.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Secret-key field names provide strong evidence that the value is sensitive.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "zzz999888777666555"
+      ],
+      "contains": [
+        "secret_key =",
+        "[REDACTED_API_KEY]",
+        "region=dev"
+      ],
+      "categoriesInclude": [
+        "API_KEY"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-004",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "{\"client_secret\":\"clientSecretValue12345\",\"service\":\"billing\"}",
+    "expected_behavior": "Redact quoted JSON client_secret value and preserve service.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "JSON configuration is a common place for accidental credential exposure.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "clientSecretValue12345"
+      ],
+      "contains": [
+        "\"client_secret\"",
+        "[REDACTED_API_KEY]",
+        "\"service\":\"billing\""
+      ],
+      "categoriesInclude": [
+        "API_KEY"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-005",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "{\"apiKey\":\"abc1234567890SECRET\",\"mode\":\"test\"}",
+    "expected_behavior": "Redact quoted JSON apiKey value and preserve mode.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "CamelCase JSON keys are common in frontend and API logs.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "abc1234567890SECRET"
+      ],
+      "contains": [
+        "\"apiKey\"",
+        "[REDACTED_API_KEY]",
+        "\"mode\":\"test\""
+      ],
+      "categoriesInclude": [
+        "API_KEY"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-006",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Build abc123xyz completed in 42ms",
+    "expected_behavior": "Preserve ordinary short build identifiers.",
+    "mapped_spec_requirement": "R14",
+    "justification": "Over-redacting harmless identifiers reduces diagnostic value.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "API_KEY",
+        "PASSWORD"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-007",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Contact alex@example.com for details",
+    "expected_behavior": "Redact a simple email address.",
+    "mapped_spec_requirement": "R4",
+    "justification": "Email addresses directly identify people.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "alex@example.com"
+      ],
+      "contains": [
+        "Contact ",
+        "[REDACTED_EMAIL]",
+        " for details"
+      ],
+      "categoriesInclude": [
+        "EMAIL"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-008",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Invite sent to pat.smith+alerts@sub.example.co.uk",
+    "expected_behavior": "Redact plus-addressed email with subdomains.",
+    "mapped_spec_requirement": "R4",
+    "justification": "Real email addresses often include plus tags and subdomains.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "pat.smith+alerts@sub.example.co.uk"
+      ],
+      "contains": [
+        "Invite sent to ",
+        "[REDACTED_EMAIL]"
+      ],
+      "categoriesInclude": [
+        "EMAIL"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-009",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Failed login for admin@example.org from web-01",
+    "expected_behavior": "Redact the email but preserve host context.",
+    "mapped_spec_requirement": "R4, R12",
+    "justification": "Support recipients need the failing host while the account remains private.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "admin@example.org"
+      ],
+      "contains": [
+        "Failed login for ",
+        "[REDACTED_EMAIL]",
+        " from web-01"
+      ],
+      "categoriesInclude": [
+        "EMAIL"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-010",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Malformed contact user@example is not a complete email",
+    "expected_behavior": "Preserve incomplete email-like text.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Avoid redacting ordinary malformed identifiers without strong evidence.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "EMAIL"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-011",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Connection from 203.0.113.42 accepted",
+    "expected_behavior": "Redact valid IPv4 address.",
+    "mapped_spec_requirement": "R6",
+    "justification": "IP addresses can reveal network or user information.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "203.0.113.42"
+      ],
+      "contains": [
+        "Connection from ",
+        "[REDACTED_IP_ADDRESS]",
+        " accepted"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-012",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Private host 10.0.0.5 failed health check",
+    "expected_behavior": "Redact private IPv4 address by default.",
+    "mapped_spec_requirement": "R6",
+    "justification": "Private network details can be sensitive even when not public.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "10.0.0.5"
+      ],
+      "contains": [
+        "Private host ",
+        "[REDACTED_IP_ADDRESS]",
+        " failed health check"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-013",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Parser saw 999.999.999.999 in a bad fixture",
+    "expected_behavior": "Do not classify invalid IPv4 octets as an address.",
+    "mapped_spec_requirement": "R6, R14",
+    "justification": "Naive IP detection creates false positives.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-014",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Support recipient",
+    "input": "Debug route uses 192.168.0.10 during local testing",
+    "expected_behavior": "Preserve IPv4 address when user disables IP redaction.",
+    "mapped_spec_requirement": "R10, R12",
+    "justification": "Optional IP preservation supports diagnostic usefulness.",
+    "result": "PASS",
+    "notes": "",
+    "options": {
+      "redactIpAddresses": false
+    },
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-015",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456",
+    "expected_behavior": "Redact authorization header credential.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Authorization headers commonly contain live credentials.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "abcdefghijklmnopqrstuvwxyz123456"
+      ],
+      "contains": [
+        "Authorization:",
+        "[REDACTED_AUTHORIZATION_HEADER]"
+      ],
+      "categoriesInclude": [
+        "AUTHORIZATION_HEADER"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-016",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "retry with Bearer tokenvalue1234567890abcdef",
+    "expected_behavior": "Redact standalone Bearer token.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Bearer tokens can appear outside header syntax.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "Bearer tokenvalue1234567890abcdef"
+      ],
+      "contains": [
+        "retry with ",
+        "[REDACTED_BEARER_TOKEN]"
+      ],
+      "categoriesInclude": [
+        "BEARER_TOKEN"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-017",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "jwt=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart",
+    "expected_behavior": "Redact JWT-like token.",
+    "mapped_spec_requirement": "R5",
+    "justification": "JWTs often include identity or authorization claims.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart"
+      ],
+      "contains": [
+        "jwt=",
+        "[REDACTED_JWT]"
+      ],
+      "categoriesInclude": [
+        "JWT"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-018",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "slack=FAKE_SLACK_TOKEN_FOR_TESTING",
+    "expected_behavior": "Redact recognizable Slack-style token.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Recognizable platform tokens should be removed when detected.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "FAKE_SLACK_TOKEN_FOR_TESTING"
+      ],
+      "contains": [
+        "slack=",
+        "[REDACTED_SLACK_TOKEN]"
+      ],
+      "categoriesInclude": [
+        "SLACK_TOKEN"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-019",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "request_id=abc123xyz duration=120ms",
+    "expected_behavior": "Preserve short request IDs.",
+    "mapped_spec_requirement": "R14",
+    "justification": "Request IDs are diagnostic and should not be treated as secrets without evidence.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-020",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Support recipient",
+    "input": "trace_id=550e8400-e29b-41d4-a716-446655440000",
+    "expected_behavior": "Preserve UUID-like trace IDs.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Trace IDs are often required for support triage.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-021",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "release version 1.2.3 completed",
+    "expected_behavior": "Preserve semantic version numbers.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Version numbers are important diagnostic context.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-022",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "feature flag api_key_rotation_enabled=true",
+    "expected_behavior": "Preserve feature flag names that do not expose a key value.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Mentioning a concept such as api_key is not itself a secret.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-023",
+    "layer": "product",
+    "category": "malformed/edge",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "",
+    "expected_behavior": "Handle empty input without errors or redactions.",
+    "mapped_spec_requirement": "R2, R3",
+    "justification": "Empty input is a normal user state.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-024",
+    "layer": "product",
+    "category": "malformed/edge",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Ошибка пользователя алексей: alex@example.com",
+    "expected_behavior": "Preserve Unicode context while redacting email.",
+    "mapped_spec_requirement": "R4, R12",
+    "justification": "Non-English logs should remain readable after redaction.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "alex@example.com"
+      ],
+      "contains": [
+        "Ошибка пользователя алексей",
+        "[REDACTED_EMAIL]"
+      ],
+      "categoriesInclude": [
+        "EMAIL"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-025",
+    "layer": "product",
+    "category": "malformed/edge",
+    "stakeholder_user_type": "Support recipient",
+    "input": "line one\npassword=multilineSecret\nline three",
+    "expected_behavior": "Preserve multiline structure while redacting password.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Logs are commonly multiline and line order matters.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "multilineSecret"
+      ],
+      "contains": [
+        "line one\n",
+        "[REDACTED_PASSWORD]",
+        "\nline three"
+      ],
+      "categoriesInclude": [
+        "PASSWORD"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-026",
+    "layer": "product",
+    "category": "adversarial/security",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "<script>alert('x')</script> user=alex@example.com",
+    "expected_behavior": "Treat HTML-like input as text and redact the email.",
+    "mapped_spec_requirement": "R4, PS4",
+    "justification": "User-controlled text must not become executable markup.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "alex@example.com"
+      ],
+      "contains": [
+        "<script>alert('x')</script>",
+        "[REDACTED_EMAIL]"
+      ],
+      "categoriesInclude": [
+        "EMAIL"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-027",
+    "layer": "product",
+    "category": "adversarial/security",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "almost jwt eyJshort.eyJalso.short should remain",
+    "expected_behavior": "Preserve malformed JWT-like strings.",
+    "mapped_spec_requirement": "R5, R14",
+    "justification": "Malformed token-like strings should not be over-redacted.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "JWT"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-028",
+    "layer": "product",
+    "category": "adversarial/security",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "repeat password=firstSecret password=secondSecret user=bob@example.com",
+    "expected_behavior": "Redact repeated secrets and email in one line.",
+    "mapped_spec_requirement": "R4, R5, R8",
+    "justification": "Attackers or hurried users may paste dense mixed-secret lines.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "firstSecret",
+        "secondSecret",
+        "bob@example.com"
+      ],
+      "contains": [
+        "[REDACTED_PASSWORD]",
+        "[REDACTED_EMAIL]"
+      ],
+      "categoriesInclude": [
+        "PASSWORD",
+        "EMAIL"
+      ],
+      "redactionCount": 3
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-029",
+    "layer": "product",
+    "category": "path-or-username",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Error opening C:\\Users\\usman\\Desktop\\secret.log",
+    "expected_behavior": "Redact username in a common Windows user path while preserving path shape.",
+    "mapped_spec_requirement": "R13",
+    "justification": "Local paths can reveal usernames and file locations.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "notContains": [
+        "usman"
+      ],
+      "contains": [
+        "C:\\Users\\[REDACTED_USERNAME]",
+        "\\Desktop\\secret.log"
+      ],
+      "categoriesInclude": [
+        "PATH_OR_USERNAME"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-030",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Production source files",
+    "expected_behavior": "No network primitives are introduced.",
+    "mapped_spec_requirement": "R1, PS1, PS3, AI1",
+    "justification": "SafePaste must never transmit pasted content.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "noNetwork"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-031",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Production source files",
+    "expected_behavior": "No browser persistence APIs are used for pasted logs.",
+    "mapped_spec_requirement": "PS2, AI2",
+    "justification": "Pasted logs must remain in memory only.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "noPersistence"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-032",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "index.html",
+    "expected_behavior": "No external scripts, stylesheets, fonts, or CDN URLs are loaded.",
+    "mapped_spec_requirement": "PS3",
+    "justification": "Third-party resources can leak metadata or introduce unreviewed code.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "noExternalResources"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-033",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Production source files",
+    "expected_behavior": "No innerHTML usage for user-controlled content.",
+    "mapped_spec_requirement": "PS4, AI6",
+    "justification": "Safe DOM APIs reduce script injection risk from pasted logs.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "noInnerHtml"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-034",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "SafePaste project files",
+    "expected_behavior": "No runtime dependency manifest is introduced.",
+    "mapped_spec_requirement": "PS8, AI4",
+    "justification": "Zero runtime dependencies keep the app auditable.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "noPackageDependencies"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-035",
+    "layer": "engineering",
+    "category": "accessibility/usability",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "index.html",
+    "expected_behavior": "Textarea controls have associated labels.",
+    "mapped_spec_requirement": "A2",
+    "justification": "Labels support keyboard and assistive technology users.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "labelsForTextareas"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-036",
+    "layer": "engineering",
+    "category": "accessibility/usability",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "index.html and styles.css",
+    "expected_behavior": "Status messaging and visible focus styling exist.",
+    "mapped_spec_requirement": "A4, A5",
+    "justification": "Users need review feedback that does not depend only on color.",
+    "result": "PASS",
+    "notes": "",
+    "checks": {
+      "staticScan": "statusAndFocus"
+    },
+    "grader": "automated eval runner/static property check"
+  },
+  {
+    "id": "EV-037",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Authorization: Basic dXNlcjpwYXNzd29yZA==",
+    "expected_behavior": "Redact Basic Authorization header credential.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Authorization headers may use schemes other than Bearer.",
+    "result": "PASS",
+    "notes": "Added after security review finding SR-002.",
+    "checks": {
+      "notContains": [
+        "dXNlcjpwYXNzd29yZA=="
+      ],
+      "contains": [
+        "Authorization:",
+        "[REDACTED_AUTHORIZATION_HEADER]"
+      ],
+      "categoriesInclude": [
+        "AUTHORIZATION_HEADER"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-038",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Authorization: Token abcdefghijklmnopqrstuvwxyz",
+    "expected_behavior": "Redact Token Authorization header credential.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Token authorization schemes are common in support logs.",
+    "result": "PASS",
+    "notes": "Added after security review finding SR-002.",
+    "checks": {
+      "notContains": [
+        "abcdefghijklmnopqrstuvwxyz"
+      ],
+      "contains": [
+        "Authorization:",
+        "[REDACTED_AUTHORIZATION_HEADER]"
+      ],
+      "categoriesInclude": [
+        "AUTHORIZATION_HEADER"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-039",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "PWD=/workspace/project npm test",
+    "expected_behavior": "Preserve path-like PWD environment values.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "PWD usually means present working directory in logs, not password.",
+    "result": "PASS",
+    "notes": "Added after security review finding SR-003.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "PASSWORD"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-040",
+    "layer": "product",
+    "category": "borderline/ip-diagnostic",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Localhost: 127.0.0.1",
+    "expected_behavior": "Preserve localhost loopback address after Manual Test 2 policy refinement.",
+    "mapped_spec_requirement": "R6, R10, R12",
+    "justification": "Manual Test 2 showed automated privacy redaction and human diagnostic usefulness disagreed on localhost.",
+    "result": "PASS",
+    "notes": "Updated after Manual Test 2 F2: preserve 127.0.0.0/8 loopback addresses.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-041",
+    "layer": "product",
+    "category": "false-positive/ip",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "1.2.3.4.5",
+    "expected_behavior": "Preserve a larger dotted numeric sequence and do not redact a four-octet substring.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 2 F1 showed the IPv4 detector redacted a valid-looking substring inside a larger dotted sequence.",
+    "result": "PASS",
+    "notes": "Regression case for F1.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-042",
+    "layer": "product",
+    "category": "borderline/ip-diagnostic",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "127.0.0.2",
+    "expected_behavior": "Preserve IPv4 loopback address in 127.0.0.0/8.",
+    "mapped_spec_requirement": "R6, R10, R12",
+    "justification": "Manual Test 2 F2 adopted a final policy to preserve loopback addresses for diagnostic usefulness.",
+    "result": "PASS",
+    "notes": "Regression case for loopback policy.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-043",
+    "layer": "product",
+    "category": "borderline/ip-diagnostic",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "127.255.255.255",
+    "expected_behavior": "Preserve highest IPv4 loopback address in 127.0.0.0/8.",
+    "mapped_spec_requirement": "R6, R10, R12",
+    "justification": "Manual Test 2 F2 adopted a final policy to preserve the entire 127.0.0.0/8 loopback range.",
+    "result": "PASS",
+    "notes": "Regression case for loopback policy.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-044",
+    "layer": "product",
+    "category": "path-or-username",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "/home/alice/project/error.log",
+    "expected_behavior": "Redact only the username segment in a Linux home path.",
+    "mapped_spec_requirement": "R13, R12",
+    "justification": "Manual Test 2 F3 showed Linux home-path usernames were not redacted, even though the accepted path policy covers recognized home-directory forms.",
+    "result": "PASS",
+    "notes": "Regression case for F3.",
+    "checks": {
+      "notContains": [
+        "alice"
+      ],
+      "contains": [
+        "/home/[REDACTED_USERNAME]/project/error.log"
+      ],
+      "categoriesInclude": [
+        "PATH_OR_USERNAME"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-045",
+    "layer": "product",
+    "category": "path-or-username",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "/home/bob/",
+    "expected_behavior": "Redact only the username segment in a Linux home path with trailing slash.",
+    "mapped_spec_requirement": "R13, R12",
+    "justification": "Manual Test 2 F3 requires preserving path shape while protecting home-directory usernames.",
+    "result": "PASS",
+    "notes": "Regression case for F3.",
+    "checks": {
+      "notContains": [
+        "bob"
+      ],
+      "contains": [
+        "/home/[REDACTED_USERNAME]/"
+      ],
+      "categoriesInclude": [
+        "PATH_OR_USERNAME"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-046",
+    "layer": "product",
+    "category": "false-positive/path",
+    "stakeholder_user_type": "Support recipient",
+    "input": "/var/log/nginx/error.log",
+    "expected_behavior": "Preserve non-home Linux system paths.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "The path policy should redact recognized home-directory usernames without destroying system log paths.",
+    "result": "PASS",
+    "notes": "Regression case for F3 proportionality.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "PATH_OR_USERNAME"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-047",
+    "layer": "product",
+    "category": "false-positive/path",
+    "stakeholder_user_type": "Support recipient",
+    "input": "/usr/local/bin",
+    "expected_behavior": "Preserve non-home Linux system paths.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Manual Test 2 F3 requires recognized home-directory username redaction without broad Linux path redaction.",
+    "result": "PASS",
+    "notes": "Regression case for F3 proportionality.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "PATH_OR_USERNAME"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-048",
+    "layer": "product",
+    "category": "structured-username",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "username=musman24\nuser_name=alice_dev\nuser=bob-admin",
+    "expected_behavior": "Redact values of explicit structured username fields while preserving field names.",
+    "mapped_spec_requirement": "R13, R12",
+    "justification": "Manual Test 3 F4 showed explicit account identifiers remained visible even though structured username fields provide a strong privacy signal.",
+    "result": "PASS",
+    "notes": "Regression case for F4.",
+    "checks": {
+      "notContains": [
+        "musman24",
+        "alice_dev",
+        "bob-admin"
+      ],
+      "contains": [
+        "username=[REDACTED_USERNAME]",
+        "user_name=[REDACTED_USERNAME]",
+        "user=[REDACTED_USERNAME]"
+      ],
+      "categoriesInclude": [
+        "USERNAME"
+      ],
+      "redactionCount": 3
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-049",
+    "layer": "product",
+    "category": "structured-username",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "{\"username\":\"musman24\",\"role\":\"admin\"}",
+    "expected_behavior": "Redact quoted JSON username values while preserving JSON structure and harmless fields.",
+    "mapped_spec_requirement": "R13, R12",
+    "justification": "Manual Test 3 F4 requested quoted JSON equivalents when practical.",
+    "result": "PASS",
+    "notes": "Regression case for F4 JSON form.",
+    "checks": {
+      "notContains": [
+        "musman24"
+      ],
+      "contains": [
+        "\"username\":\"[REDACTED_USERNAME]\"",
+        "\"role\":\"admin\""
+      ],
+      "categoriesInclude": [
+        "USERNAME"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-050",
+    "layer": "product",
+    "category": "false-positive/username",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "name=Muhammad",
+    "expected_behavior": "Preserve arbitrary personal-name fields that are not explicit username/account identifiers.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Manual Test 3 F4 rejects arbitrary personal-name detection because it would create excessive false positives.",
+    "result": "PASS",
+    "notes": "Boundary case for structured username policy.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "USERNAME"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-051",
+    "layer": "product",
+    "category": "false-positive/username",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "User alice reported that the service failed after deployment.",
+    "expected_behavior": "Preserve prose references to people; do not attempt arbitrary personal-name detection.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Manual Test 3 F4 keeps name detection scoped to explicit structured username/account fields.",
+    "result": "PASS",
+    "notes": "Boundary case for structured username policy.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "USERNAME"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-052",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "release=1.2.3.4",
+    "expected_behavior": "Preserve IPv4-shaped values when they are clearly release version values.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 3 F5 showed syntactic IPv4 redaction can remove useful version context.",
+    "result": "PASS",
+    "notes": "Regression case for F5.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-053",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "version=10.20.30.40",
+    "expected_behavior": "Preserve IPv4-shaped values when they are clearly version field values.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 3 F5 requires a narrow version-field context policy rather than disabling IPv4 redaction.",
+    "result": "PASS",
+    "notes": "Regression case for F5.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-054",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "app_version=2.4.6.8",
+    "expected_behavior": "Preserve IPv4-shaped values when they are clearly app version values.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 3 F5 lists app_version as a version-related field.",
+    "result": "PASS",
+    "notes": "Regression case for F5.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-055",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "client_ip=10.20.30.40",
+    "expected_behavior": "Continue redacting IPv4-shaped values in explicit IP fields.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 3 F5 requires the version-field exception to stay narrow and not disable IPv4 redaction.",
+    "result": "PASS",
+    "notes": "Boundary case for F5.",
+    "checks": {
+      "notContains": [
+        "10.20.30.40"
+      ],
+      "contains": [
+        "client_ip=",
+        "[REDACTED_IP_ADDRESS]"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-056",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "server_ip=8.8.8.8",
+    "expected_behavior": "Continue redacting IPv4-shaped values in explicit IP fields.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 3 F5 requires retaining IP redaction outside narrow version-related contexts.",
+    "result": "PASS",
+    "notes": "Boundary case for F5.",
+    "checks": {
+      "notContains": [
+        "8.8.8.8"
+      ],
+      "contains": [
+        "server_ip=",
+        "[REDACTED_IP_ADDRESS]"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-057",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "software_version=3.5.7.9",
+    "expected_behavior": "Preserve IPv4-shaped values when they are clearly software version values.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 3 F5 lists software_version as a version-related field.",
+    "result": "PASS",
+    "notes": "Regression case for F5.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-058",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Release 1.2.3.4 passed QA yesterday.",
+    "expected_behavior": "Preserve IPv4-shaped values when directly associated with strong prose release context.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 4 F6 showed obvious natural-language release version context was redacted as an IP address.",
+    "result": "PASS",
+    "notes": "Regression case for F6.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-059",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Version 10.20.30.40 passed QA yesterday.",
+    "expected_behavior": "Preserve IPv4-shaped values when directly associated with strong prose version context.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 4 F6 requires case-insensitive natural-language version context handling.",
+    "result": "PASS",
+    "notes": "Regression case for F6.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-060",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "version: 1.2.3.4",
+    "expected_behavior": "Preserve IPv4-shaped values in colon version context.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 4 F6 lists version colon syntax as a strong software-version context.",
+    "result": "PASS",
+    "notes": "Boundary case for F6.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-061",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "release: 1.2.3.4",
+    "expected_behavior": "Preserve IPv4-shaped values in colon release context.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 4 F6 lists release colon syntax as a strong software-version context.",
+    "result": "PASS",
+    "notes": "Boundary case for F6.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-062",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Server 10.20.30.40 failed",
+    "expected_behavior": "Continue redacting IPv4 addresses in ordinary server prose.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 4 F6 requires the prose version-context exception to remain narrow.",
+    "result": "PASS",
+    "notes": "Boundary case for F6.",
+    "checks": {
+      "notContains": [
+        "10.20.30.40"
+      ],
+      "contains": [
+        "Server ",
+        "[REDACTED_IP_ADDRESS]",
+        " failed"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-063",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Client 8.8.8.8 disconnected",
+    "expected_behavior": "Continue redacting IPv4 addresses in ordinary client prose.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 4 F6 requires preserving version context without disabling IP redaction.",
+    "result": "PASS",
+    "notes": "Boundary case for F6.",
+    "checks": {
+      "notContains": [
+        "8.8.8.8"
+      ],
+      "contains": [
+        "Client ",
+        "[REDACTED_IP_ADDRESS]",
+        " disconnected"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-064",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Remote address: 172.20.10.15",
+    "expected_behavior": "Continue redacting IPv4 addresses in remote-address context.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 4 F6 requires non-version network contexts to remain redaction-eligible.",
+    "result": "PASS",
+    "notes": "Boundary case for F6.",
+    "checks": {
+      "notContains": [
+        "172.20.10.15"
+      ],
+      "contains": [
+        "Remote address: ",
+        "[REDACTED_IP_ADDRESS]"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-065",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Connection received from 192.168.20.50.",
+    "expected_behavior": "Redact standalone valid non-loopback IPv4 addresses before sentence-ending periods.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 5 F7 showed a standalone IPv4 address followed by a period remained visible.",
+    "result": "PASS",
+    "notes": "Regression case for F7.",
+    "checks": {
+      "notContains": [
+        "192.168.20.50"
+      ],
+      "contains": [
+        "Connection received from ",
+        "[REDACTED_IP_ADDRESS]."
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-066",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Request originated at 10.1.2.3.",
+    "expected_behavior": "Redact standalone valid non-loopback IPv4 addresses before sentence-ending periods.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 5 F7 requires the fix to generalize beyond the exact sentence and IP.",
+    "result": "PASS",
+    "notes": "Regression case for F7.",
+    "checks": {
+      "notContains": [
+        "10.1.2.3"
+      ],
+      "contains": [
+        "Request originated at ",
+        "[REDACTED_IP_ADDRESS]."
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-067",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Remote host 172.16.4.20 disconnected.",
+    "expected_behavior": "Continue redacting standalone valid non-loopback IPv4 addresses in network prose.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 5 confirmed normal network prose without version context should remain redaction-eligible.",
+    "result": "PASS",
+    "notes": "Boundary case for F7.",
+    "checks": {
+      "notContains": [
+        "172.16.4.20"
+      ],
+      "contains": [
+        "Remote host ",
+        "[REDACTED_IP_ADDRESS]",
+        " disconnected."
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-068",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Peer address: 8.8.8.8",
+    "expected_behavior": "Continue redacting standalone valid non-loopback IPv4 addresses in peer-address context.",
+    "mapped_spec_requirement": "R6, R12",
+    "justification": "Manual Test 5 requires standalone non-loopback IPv4 redaction unless a narrow preservation context applies.",
+    "result": "PASS",
+    "notes": "Boundary case for F7.",
+    "checks": {
+      "notContains": [
+        "8.8.8.8"
+      ],
+      "contains": [
+        "Peer address: ",
+        "[REDACTED_IP_ADDRESS]"
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-069",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Version 3.4.5.6 deployed.",
+    "expected_behavior": "Preserve IPv4-shaped values in direct Version prose context.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 5 requires version preservation to remain intact after the F7 fix.",
+    "result": "PASS",
+    "notes": "Regression guard for F6 while fixing F7.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-070",
+    "layer": "product",
+    "category": "false-positive/ip-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Release 5.6.7.8 passed QA.",
+    "expected_behavior": "Preserve IPv4-shaped values in direct Release prose context.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 5 requires release preservation to remain intact after the F7 fix.",
+    "result": "PASS",
+    "notes": "Regression guard for F6 while fixing F7.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-071",
+    "layer": "product",
+    "category": "false-positive/ip-hostname",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "https://10.20.30.40.example.com/status",
+    "expected_behavior": "Preserve IPv4-shaped substrings embedded inside hostnames.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 5 requires complete IP token detection and preservation inside hostnames.",
+    "result": "PASS",
+    "notes": "Regression guard for hostname boundary while fixing F7.",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 0
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-072",
+    "layer": "product",
+    "category": "known-limitation/ip-firmware-version",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Firmware 1.2.3.4 installed successfully.",
+    "expected_behavior": "Current deterministic policy redacts this ambiguous IPv4-shaped value because firmware is not in the narrow Version/Release exception list.",
+    "mapped_spec_requirement": "R6, R12, R14",
+    "justification": "Manual Test 6 identified a human-vs-automated disagreement: this is likely firmware-version context, but SafePaste intentionally avoids broad semantic/NLP classification.",
+    "result": "PASS",
+    "notes": "Known borderline limitation; not a sanitizer feature request while the core sanitizer is frozen.",
+    "checks": {
+      "notContains": [
+        "1.2.3.4"
+      ],
+      "contains": [
+        "Firmware ",
+        "[REDACTED_IP_ADDRESS]",
+        " installed successfully."
+      ],
+      "categoriesInclude": [
+        "IP_ADDRESS"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  },
+  {
+    "id": "EV-073",
+    "layer": "product",
+    "category": "secret/generic-structured",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "secret=FakeSecretValue987",
+    "expected_behavior": "Redact explicit structured secret field values.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Final regression F8 showed an explicit `secret=` field remained visible. Structured secret field names provide strong evidence that the value is sensitive.",
+    "result": "PASS",
+    "notes": "Regression case for final high-severity privacy failure F8.",
+    "checks": {
+      "notContains": [
+        "FakeSecretValue987"
+      ],
+      "contains": [
+        "secret=",
+        "[REDACTED_SECRET]"
+      ],
+      "categoriesInclude": [
+        "SECRET"
+      ],
+      "redactionCount": 1
+    },
+    "grader": "automated exact/property eval runner"
+  }
+]
+

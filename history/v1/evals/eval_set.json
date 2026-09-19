@@ -1,0 +1,618 @@
+[
+  {
+    "id": "EV-001",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "api_key=abc1234567890SECRET request_id=req-42",
+    "expected_behavior": "Redact the API key value and preserve request context.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Common key=value API keys are high-risk credentials.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["abc1234567890SECRET"],
+      "contains": ["api_key=", "[REDACTED_API_KEY]", "request_id=req-42"],
+      "categoriesInclude": ["API_KEY"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-002",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "access_token=tok_1234567890abcdef status=401",
+    "expected_behavior": "Redact the access token value while preserving status code.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Access tokens can authorize account access.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["tok_1234567890abcdef"],
+      "contains": ["access_token=", "[REDACTED_API_KEY]", "status=401"],
+      "categoriesInclude": ["API_KEY"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-003",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "secret_key = zzz999888777666555 region=dev",
+    "expected_behavior": "Redact the secret key and preserve region.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Secret-key field names provide strong evidence that the value is sensitive.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["zzz999888777666555"],
+      "contains": ["secret_key =", "[REDACTED_API_KEY]", "region=dev"],
+      "categoriesInclude": ["API_KEY"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-004",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "{\"client_secret\":\"clientSecretValue12345\",\"service\":\"billing\"}",
+    "expected_behavior": "Redact quoted JSON client_secret value and preserve service.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "JSON configuration is a common place for accidental credential exposure.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["clientSecretValue12345"],
+      "contains": ["\"client_secret\"", "[REDACTED_API_KEY]", "\"service\":\"billing\""],
+      "categoriesInclude": ["API_KEY"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-005",
+    "layer": "product",
+    "category": "secret/api-key",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "{\"apiKey\":\"abc1234567890SECRET\",\"mode\":\"test\"}",
+    "expected_behavior": "Redact quoted JSON apiKey value and preserve mode.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "CamelCase JSON keys are common in frontend and API logs.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["abc1234567890SECRET"],
+      "contains": ["\"apiKey\"", "[REDACTED_API_KEY]", "\"mode\":\"test\""],
+      "categoriesInclude": ["API_KEY"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-006",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Build abc123xyz completed in 42ms",
+    "expected_behavior": "Preserve ordinary short build identifiers.",
+    "mapped_spec_requirement": "R14",
+    "justification": "Over-redacting harmless identifiers reduces diagnostic value.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": ["API_KEY", "PASSWORD"],
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-007",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Contact alex@example.com for details",
+    "expected_behavior": "Redact a simple email address.",
+    "mapped_spec_requirement": "R4",
+    "justification": "Email addresses directly identify people.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["alex@example.com"],
+      "contains": ["Contact ", "[REDACTED_EMAIL]", " for details"],
+      "categoriesInclude": ["EMAIL"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-008",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Invite sent to pat.smith+alerts@sub.example.co.uk",
+    "expected_behavior": "Redact plus-addressed email with subdomains.",
+    "mapped_spec_requirement": "R4",
+    "justification": "Real email addresses often include plus tags and subdomains.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["pat.smith+alerts@sub.example.co.uk"],
+      "contains": ["Invite sent to ", "[REDACTED_EMAIL]"],
+      "categoriesInclude": ["EMAIL"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-009",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Failed login for admin@example.org from web-01",
+    "expected_behavior": "Redact the email but preserve host context.",
+    "mapped_spec_requirement": "R4, R12",
+    "justification": "Support recipients need the failing host while the account remains private.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["admin@example.org"],
+      "contains": ["Failed login for ", "[REDACTED_EMAIL]", " from web-01"],
+      "categoriesInclude": ["EMAIL"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-010",
+    "layer": "product",
+    "category": "email",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Malformed contact user@example is not a complete email",
+    "expected_behavior": "Preserve incomplete email-like text.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Avoid redacting ordinary malformed identifiers without strong evidence.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": ["EMAIL"],
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-011",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Connection from 203.0.113.42 accepted",
+    "expected_behavior": "Redact valid IPv4 address.",
+    "mapped_spec_requirement": "R6",
+    "justification": "IP addresses can reveal network or user information.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["203.0.113.42"],
+      "contains": ["Connection from ", "[REDACTED_IP_ADDRESS]", " accepted"],
+      "categoriesInclude": ["IP_ADDRESS"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-012",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Private host 10.0.0.5 failed health check",
+    "expected_behavior": "Redact private IPv4 address by default.",
+    "mapped_spec_requirement": "R6",
+    "justification": "Private network details can be sensitive even when not public.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["10.0.0.5"],
+      "contains": ["Private host ", "[REDACTED_IP_ADDRESS]", " failed health check"],
+      "categoriesInclude": ["IP_ADDRESS"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-013",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "Parser saw 999.999.999.999 in a bad fixture",
+    "expected_behavior": "Do not classify invalid IPv4 octets as an address.",
+    "mapped_spec_requirement": "R6, R14",
+    "justification": "Naive IP detection creates false positives.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": ["IP_ADDRESS"],
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-014",
+    "layer": "product",
+    "category": "ip",
+    "stakeholder_user_type": "Support recipient",
+    "input": "Debug route uses 192.168.0.10 during local testing",
+    "expected_behavior": "Preserve IPv4 address when user disables IP redaction.",
+    "mapped_spec_requirement": "R10, R12",
+    "justification": "Optional IP preservation supports diagnostic usefulness.",
+    "result": "pending",
+    "notes": "",
+    "options": {
+      "redactIpAddresses": false
+    },
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": ["IP_ADDRESS"],
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-015",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456",
+    "expected_behavior": "Redact authorization header credential.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Authorization headers commonly contain live credentials.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["abcdefghijklmnopqrstuvwxyz123456"],
+      "contains": ["Authorization:", "[REDACTED_AUTHORIZATION_HEADER]"],
+      "categoriesInclude": ["AUTHORIZATION_HEADER"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-016",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "retry with Bearer tokenvalue1234567890abcdef",
+    "expected_behavior": "Redact standalone Bearer token.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Bearer tokens can appear outside header syntax.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["Bearer tokenvalue1234567890abcdef"],
+      "contains": ["retry with ", "[REDACTED_BEARER_TOKEN]"],
+      "categoriesInclude": ["BEARER_TOKEN"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-017",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "jwt=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart",
+    "expected_behavior": "Redact JWT-like token.",
+    "mapped_spec_requirement": "R5",
+    "justification": "JWTs often include identity or authorization claims.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart"],
+      "contains": ["jwt=", "[REDACTED_JWT]"],
+      "categoriesInclude": ["JWT"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-018",
+    "layer": "product",
+    "category": "authentication/token",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "slack=FAKE_SLACK_TOKEN_FOR_TESTING",
+    "expected_behavior": "Redact recognizable Slack-style token.",
+    "mapped_spec_requirement": "R5",
+    "justification": "Recognizable platform tokens should be removed when detected.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["FAKE_SLACK_TOKEN_FOR_TESTING"],
+      "contains": ["slack=", "[REDACTED_SLACK_TOKEN]"],
+      "categoriesInclude": ["SLACK_TOKEN"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-019",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "request_id=abc123xyz duration=120ms",
+    "expected_behavior": "Preserve short request IDs.",
+    "mapped_spec_requirement": "R14",
+    "justification": "Request IDs are diagnostic and should not be treated as secrets without evidence.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-020",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Support recipient",
+    "input": "trace_id=550e8400-e29b-41d4-a716-446655440000",
+    "expected_behavior": "Preserve UUID-like trace IDs.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Trace IDs are often required for support triage.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-021",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "release version 1.2.3 completed",
+    "expected_behavior": "Preserve semantic version numbers.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Version numbers are important diagnostic context.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-022",
+    "layer": "product",
+    "category": "false-positive",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "feature flag api_key_rotation_enabled=true",
+    "expected_behavior": "Preserve feature flag names that do not expose a key value.",
+    "mapped_spec_requirement": "R12, R14",
+    "justification": "Mentioning a concept such as api_key is not itself a secret.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-023",
+    "layer": "product",
+    "category": "malformed/edge",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "",
+    "expected_behavior": "Handle empty input without errors or redactions.",
+    "mapped_spec_requirement": "R2, R3",
+    "justification": "Empty input is a normal user state.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-024",
+    "layer": "product",
+    "category": "malformed/edge",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Ошибка пользователя алексей: alex@example.com",
+    "expected_behavior": "Preserve Unicode context while redacting email.",
+    "mapped_spec_requirement": "R4, R12",
+    "justification": "Non-English logs should remain readable after redaction.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["alex@example.com"],
+      "contains": ["Ошибка пользователя алексей", "[REDACTED_EMAIL]"],
+      "categoriesInclude": ["EMAIL"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-025",
+    "layer": "product",
+    "category": "malformed/edge",
+    "stakeholder_user_type": "Support recipient",
+    "input": "line one\npassword=multilineSecret\nline three",
+    "expected_behavior": "Preserve multiline structure while redacting password.",
+    "mapped_spec_requirement": "R5, R12",
+    "justification": "Logs are commonly multiline and line order matters.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["multilineSecret"],
+      "contains": ["line one\n", "[REDACTED_PASSWORD]", "\nline three"],
+      "categoriesInclude": ["PASSWORD"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-026",
+    "layer": "product",
+    "category": "adversarial/security",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "<script>alert('x')</script> user=alex@example.com",
+    "expected_behavior": "Treat HTML-like input as text and redact the email.",
+    "mapped_spec_requirement": "R4, PS4",
+    "justification": "User-controlled text must not become executable markup.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["alex@example.com"],
+      "contains": ["<script>alert('x')</script>", "[REDACTED_EMAIL]"],
+      "categoriesInclude": ["EMAIL"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-027",
+    "layer": "product",
+    "category": "adversarial/security",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "almost jwt eyJshort.eyJalso.short should remain",
+    "expected_behavior": "Preserve malformed JWT-like strings.",
+    "mapped_spec_requirement": "R5, R14",
+    "justification": "Malformed token-like strings should not be over-redacted.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "equalsInput": true,
+      "categoriesExclude": ["JWT"],
+      "redactionCount": 0
+    }
+  },
+  {
+    "id": "EV-028",
+    "layer": "product",
+    "category": "adversarial/security",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "repeat password=firstSecret password=secondSecret user=bob@example.com",
+    "expected_behavior": "Redact repeated secrets and email in one line.",
+    "mapped_spec_requirement": "R4, R5, R8",
+    "justification": "Attackers or hurried users may paste dense mixed-secret lines.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["firstSecret", "secondSecret", "bob@example.com"],
+      "contains": ["[REDACTED_PASSWORD]", "[REDACTED_EMAIL]"],
+      "categoriesInclude": ["PASSWORD", "EMAIL"],
+      "redactionCount": 3
+    }
+  },
+  {
+    "id": "EV-029",
+    "layer": "product",
+    "category": "path-or-username",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Error opening C:\\Users\\usman\\Desktop\\secret.log",
+    "expected_behavior": "Redact username in a common Windows user path while preserving path shape.",
+    "mapped_spec_requirement": "R13",
+    "justification": "Local paths can reveal usernames and file locations.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "notContains": ["usman"],
+      "contains": ["C:\\Users\\[REDACTED_USER]", "\\Desktop\\secret.log"],
+      "categoriesInclude": ["PATH_OR_USERNAME"],
+      "redactionCount": 1
+    }
+  },
+  {
+    "id": "EV-030",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Production source files",
+    "expected_behavior": "No network primitives are introduced.",
+    "mapped_spec_requirement": "R1, PS1, PS3, AI1",
+    "justification": "SafePaste must never transmit pasted content.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "noNetwork"
+    }
+  },
+  {
+    "id": "EV-031",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Person whose data appears in the logs",
+    "input": "Production source files",
+    "expected_behavior": "No browser persistence APIs are used for pasted logs.",
+    "mapped_spec_requirement": "PS2, AI2",
+    "justification": "Pasted logs must remain in memory only.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "noPersistence"
+    }
+  },
+  {
+    "id": "EV-032",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "index.html",
+    "expected_behavior": "No external scripts, stylesheets, fonts, or CDN URLs are loaded.",
+    "mapped_spec_requirement": "PS3",
+    "justification": "Third-party resources can leak metadata or introduce unreviewed code.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "noExternalResources"
+    }
+  },
+  {
+    "id": "EV-033",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "Production source files",
+    "expected_behavior": "No innerHTML usage for user-controlled content.",
+    "mapped_spec_requirement": "PS4, AI6",
+    "justification": "Safe DOM APIs reduce script injection risk from pasted logs.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "noInnerHtml"
+    }
+  },
+  {
+    "id": "EV-034",
+    "layer": "engineering",
+    "category": "privacy/static",
+    "stakeholder_user_type": "Security / compliance team",
+    "input": "SafePaste project files",
+    "expected_behavior": "No runtime dependency manifest is introduced.",
+    "mapped_spec_requirement": "PS8, AI4",
+    "justification": "Zero runtime dependencies keep the app auditable.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "noPackageDependencies"
+    }
+  },
+  {
+    "id": "EV-035",
+    "layer": "engineering",
+    "category": "accessibility/usability",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "index.html",
+    "expected_behavior": "Textarea controls have associated labels.",
+    "mapped_spec_requirement": "A2",
+    "justification": "Labels support keyboard and assistive technology users.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "labelsForTextareas"
+    }
+  },
+  {
+    "id": "EV-036",
+    "layer": "engineering",
+    "category": "accessibility/usability",
+    "stakeholder_user_type": "Developer / IT support engineer",
+    "input": "index.html and styles.css",
+    "expected_behavior": "Status messaging and visible focus styling exist.",
+    "mapped_spec_requirement": "A4, A5",
+    "justification": "Users need review feedback that does not depend only on color.",
+    "result": "pending",
+    "notes": "",
+    "checks": {
+      "staticScan": "statusAndFocus"
+    }
+  }
+]
+
