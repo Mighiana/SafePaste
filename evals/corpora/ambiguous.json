@@ -1,0 +1,115 @@
+{
+  "corpus": "ambiguous",
+  "description": "HUMAN REVIEW: context-dependent identifiers. The category must be detected with allowKeep=true, take the listed default action per profile, and accept both KEEP and REDACT overrides.",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "id": "AM-001",
+      "title": "private IPv4 in support vs strict",
+      "input": "gateway 192.168.10.1 timeout",
+      "category": "IP_ADDRESS",
+      "actions": {
+        "strict": "REDACT",
+        "support": "KEEP",
+        "incident": "KEEP"
+      },
+      "rationale": "Private addresses help troubleshooting but reveal internal topology; reviewer decides per destination."
+    },
+    {
+      "id": "AM-002",
+      "title": "loopback IPv4",
+      "input": "connect 127.0.0.1:5432 refused",
+      "category": "IP_ADDRESS",
+      "actions": {
+        "strict": "REDACT",
+        "support": "KEEP",
+        "incident": "KEEP"
+      },
+      "rationale": "Loopback is low risk but strict redacts every supported address."
+    },
+    {
+      "id": "AM-003",
+      "title": "public IPv4 evidence",
+      "input": "denied 203.0.113.9",
+      "category": "IP_ADDRESS",
+      "actions": {
+        "strict": "REDACT",
+        "support": "REDACT",
+        "incident": "KEEP"
+      },
+      "rationale": "Incident evidence keeps attacker addresses; never default for public sharing."
+    },
+    {
+      "id": "AM-004",
+      "title": "unique-local IPv6",
+      "input": "peer fd12:3456:789a::1 down",
+      "category": "IPV6_ADDRESS",
+      "actions": {
+        "strict": "REDACT",
+        "support": "KEEP",
+        "incident": "KEEP"
+      },
+      "rationale": "Unique-local IPv6 behaves like RFC1918 for policy."
+    },
+    {
+      "id": "AM-005",
+      "title": "MAC address hardware id",
+      "input": "dhcp lease 00:1a:2b:3c:4d:5e",
+      "category": "MAC_ADDRESS",
+      "actions": {
+        "strict": "REDACT",
+        "support": "REDACT",
+        "incident": "KEEP"
+      },
+      "rationale": "Hardware IDs can track a device; incident responders may need them."
+    },
+    {
+      "id": "AM-006",
+      "title": "email in support ticket",
+      "input": "reported by fake.user@example.test",
+      "category": "EMAIL",
+      "actions": {
+        "strict": "REDACT",
+        "support": "REDACT",
+        "incident": "REDACT"
+      },
+      "rationale": "Identity is redacted by default in every profile; a human may KEEP a role mailbox."
+    },
+    {
+      "id": "AM-007",
+      "title": "short username field",
+      "input": "user=svc action=deploy",
+      "category": "USERNAME",
+      "actions": {
+        "strict": "REDACT",
+        "support": "REDACT",
+        "incident": "REDACT"
+      },
+      "rationale": "Service accounts are often harmless but syntax cannot distinguish them from people."
+    },
+    {
+      "id": "AM-008",
+      "title": "home path username",
+      "input": "failed to read /home/builder/.cache",
+      "category": "PATH_OR_USERNAME",
+      "actions": {
+        "strict": "REDACT",
+        "support": "REDACT",
+        "incident": "REDACT"
+      },
+      "rationale": "CI build users vs personal accounts need human context."
+    },
+    {
+      "id": "AM-009",
+      "title": "bare dotted quad without version context",
+      "input": "upgraded agent to 1.2.3.4 and restarted",
+      "category": "IP_ADDRESS",
+      "actions": {
+        "strict": "REDACT",
+        "support": "REDACT",
+        "incident": "KEEP"
+      },
+      "rationale": "Syntax alone cannot tell a four-part version from an IPv4 address; only explicit version/release context exempts it."
+    }
+  ]
+}

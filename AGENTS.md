@@ -35,3 +35,10 @@ SafePaste is a local-only browser log sanitizer for removing likely sensitive da
 ## Ambiguity Handling
 
 If a requirement is ambiguous, document the trade-off and choose the most conservative local-only behavior that preserves user review. Do not rewrite `SPEC_v1.md` after implementation begins.
+
+## Later Extension Modules (October 2026)
+
+- `src/sanitizer.js` is the shared engine for the browser, `src/worker.js` (local Web Worker) and `bin/safepaste.js` (CLI); keep one implementation.
+- Extension tests live in `tests/` and `evals/` (corpora, red-team, benchmarks, static privacy and contract checks); CI runs all of them (`.github/workflows/ci.yml`). Run `sh .claude/hooks/pre-commit.sh` before commits.
+- Allowed output is explicit and user-driven only: Copy, the `sanitized.log` / `privacy-report.json` downloads, and CLI `-o` / `--report` new files. Never export the original input or persist anything automatically; reports must stay metadata-only.
+- Do not modify `history/`, `SPEC_v1.md`, `evals/results_v1.md` or `evals/results_final.md`.

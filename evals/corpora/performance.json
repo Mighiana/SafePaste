@@ -1,0 +1,248 @@
+{
+  "corpus": "performance",
+  "description": "PERFORMANCE / ReDoS: deterministic generated inputs (no large files committed). expect is ok or the fail-closed error code; boundMs is the regression ceiling per case.",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "id": "PF-001",
+      "title": "sparse logfmt 1 MiB (large tier)",
+      "generator": {
+        "kind": "logfmt",
+        "bytes": 1048576,
+        "dense": false
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 1500,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-002",
+      "title": "dense logfmt 1 MiB (large tier, text)",
+      "generator": {
+        "kind": "logfmt",
+        "bytes": 1048576,
+        "dense": true
+      },
+      "format": "text",
+      "limits": "large",
+      "boundMs": 1500,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-003",
+      "title": "dense logfmt 1 MiB standard tier auto fails closed",
+      "generator": {
+        "kind": "logfmt",
+        "bytes": 1048576,
+        "dense": true
+      },
+      "format": "auto",
+      "limits": "standard",
+      "boundMs": 1500,
+      "expect": "FIELD_LIMIT"
+    },
+    {
+      "id": "PF-004",
+      "title": "single 2 MiB line without separators",
+      "generator": {
+        "kind": "repeat",
+        "unit": "a",
+        "bytes": 2000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-005",
+      "title": "thousands of dotted digit runs",
+      "generator": {
+        "kind": "repeat",
+        "unit": "1.2.3.4.5.6.7.8.9.",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-006",
+      "title": "malformed bearer repetition",
+      "generator": {
+        "kind": "repeat",
+        "unit": "Authorization: Bearer \n",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-007",
+      "title": "unterminated PEM BEGIN markers",
+      "generator": {
+        "kind": "repeat",
+        "unit": "-----BEGIN PRIVATE KEY-----\nAAAA\n",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-008",
+      "title": "unclosed JSON string",
+      "generator": {
+        "kind": "wrap",
+        "prefix": "{\"msg\":\"",
+        "unit": "a",
+        "bytes": 1000000,
+        "suffix": ""
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-009",
+      "title": "JSON nesting 65 fails closed",
+      "generator": {
+        "kind": "wrap",
+        "prefix": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[",
+        "unit": "",
+        "bytes": 0,
+        "suffix": "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+      },
+      "format": "json",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "DEPTH_LIMIT"
+    },
+    {
+      "id": "PF-010",
+      "title": "Unicode combining marks and emoji",
+      "generator": {
+        "kind": "repeat",
+        "unit": "é🔒 ",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-011",
+      "title": "repeated escaped quotes in quoted credential",
+      "generator": {
+        "kind": "wrap",
+        "prefix": "password=\"",
+        "unit": "\\\"",
+        "bytes": 1000000,
+        "suffix": ""
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-012",
+      "title": "dense embedded JSON pairs fail closed (standard tier)",
+      "generator": {
+        "kind": "repeat",
+        "unit": "\"a\":\"b\" ",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "standard",
+      "boundMs": 5000,
+      "expect": "FIELD_LIMIT"
+    },
+    {
+      "id": "PF-016",
+      "title": "dense embedded JSON pairs (large tier)",
+      "generator": {
+        "kind": "repeat",
+        "unit": "\"a\":\"b\" ",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-013",
+      "title": "hex-colon runs (IPv6/MAC-like)",
+      "generator": {
+        "kind": "repeat",
+        "unit": "ab:",
+        "bytes": 1000000
+      },
+      "format": "auto",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-014",
+      "title": "email-like dotted runs",
+      "generator": {
+        "kind": "repeat",
+        "unit": "a.",
+        "bytes": 500000,
+        "suffix": "@example.test"
+      },
+      "format": "text",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-015",
+      "title": "input over large tier fails closed",
+      "generator": {
+        "kind": "repeat",
+        "unit": "x",
+        "bytes": 16777217
+      },
+      "format": "text",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "INPUT_LIMIT"
+    },
+    {
+      "id": "PF-017",
+      "title": "underscore-joined identifier runs (suffix-key prefix backtracking)",
+      "generator": {
+        "kind": "repeat",
+        "unit": "a_",
+        "bytes": 1048576
+      },
+      "format": "text",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    },
+    {
+      "id": "PF-018",
+      "title": "near-miss suffix keys (a_a_..._passwor)",
+      "generator": {
+        "kind": "repeat",
+        "unit": "a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_a_passwor ",
+        "bytes": 1048576
+      },
+      "format": "text",
+      "limits": "large",
+      "boundMs": 5000,
+      "expect": "ok"
+    }
+  ]
+}

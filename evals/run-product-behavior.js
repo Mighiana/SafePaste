@@ -1,92 +1,4 @@
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-const sanitizer = require("../src/sanitizer");
-
-function createElement(id) {
-  return {
-    id,
-    value: "",
-    checked: true,
-    disabled: false,
-    textContent: "",
-    children: [],
-    listeners: {},
-    appendChild(child) {
-      this.children.push(child);
-    },
-    replaceChildren(...children) {
-      this.children = children;
-    },
-    addEventListener(type, handler) {
-      this.listeners[type] = handler;
-    },
-    async dispatch(type) {
-      if (!this.listeners[type]) {
-        throw new Error(`No listener registered for ${this.id}:${type}`);
-      }
-      await this.listeners[type]();
-    },
-    focus() {
-      this.focused = true;
-    },
-    select() {
-      this.selected = true;
-    }
-  };
-}
-
-function buildHarness() {
-  const elements = {
-    "input-text": createElement("input-text"),
-    "output-text": createElement("output-text"),
-    "sanitize-button": createElement("sanitize-button"),
-    "copy-button": createElement("copy-button"),
-    "clear-button": createElement("clear-button"),
-    "redact-ip": createElement("redact-ip"),
-    "redaction-count": createElement("redaction-count"),
-    "category-list": createElement("category-list"),
-    "status-message": createElement("status-message")
-  };
-
-  let copiedText = "";
-  const sandbox = {
-    window: {
-      SafePasteSanitizer: sanitizer
-    },
-    document: {
-      getElementById(id) {
-        if (!elements[id]) {
-          throw new Error(`Missing test element: ${id}`);
-        }
-        return elements[id];
-      },
-      createElement(tagName) {
-        const element = createElement(tagName);
-        element.tagName = tagName.toUpperCase();
-        return element;
-      }
-    },
-    navigator: {
-      clipboard: {
-        async writeText(value) {
-          copiedText = value;
-        }
-      }
-    }
-  };
-
-  vm.createContext(sandbox);
-  const appJs = fs.readFileSync(path.resolve(__dirname, "..", "app.js"), "utf8");
-  vm.runInContext(appJs, sandbox, { filename: "app.js" });
-
-  return {
-    elements,
-    copied() {
-      return copiedText;
-    }
-  };
-}
+const { buildHarness } = require("../tests/ui-harness");
 
 function assert(condition, message) {
   if (!condition) {
@@ -152,6 +64,9 @@ async function testIpv4UserControl() {
 
   elements["redact-ip"].checked = false;
   await elements["redact-ip"].dispatch("change");
+  assert(elements["output-text"].value === "", "policy change must discard stale output");
+  assert(elements["copy-button"].disabled, "policy change must disable stale copy");
+  await elements["sanitize-button"].dispatch("click");
   assert(elements["output-text"].value.includes("client_ip=192.168.20.50"), "IPv4 OFF should preserve network IP");
   assert(elements["output-text"].value.includes("email=[REDACTED_EMAIL]"), "IPv4 OFF should keep email redaction active");
   assert(elements["output-text"].value.includes("password=[REDACTED_PASSWORD]"), "IPv4 OFF should keep password redaction active");

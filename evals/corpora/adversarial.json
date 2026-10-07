@@ -1,0 +1,327 @@
+{
+  "corpus": "adversarial",
+  "description": "ADVERSARIAL: bypass attempts. status records the current honest result (detected | known-miss); the runner fails if actual behaviour differs in either direction so the record cannot drift.",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "id": "AD-001",
+      "attack": "mixed-case key",
+      "input": "PaSsWoRd=FakeAdv001",
+      "secret": "FakeAdv001",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-002",
+      "attack": "extra whitespace around separator",
+      "input": "password    =    FakeAdv002",
+      "secret": "FakeAdv002",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-003",
+      "attack": "colon instead of equals",
+      "input": "password: FakeAdv003",
+      "secret": "FakeAdv003",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-004",
+      "attack": "single-quoted value",
+      "input": "password='FakeAdv004'",
+      "secret": "FakeAdv004",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-005",
+      "attack": "JSON unicode-escaped key",
+      "input": "{\"pa\\u0073sword\":\"FakeAdv005\"}",
+      "secret": "FakeAdv005",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-006",
+      "attack": "escaped quote splitting value (fixed in phase 11)",
+      "input": "password=\"FakeA\\\"FakeAdv006\"",
+      "secret": "FakeAdv006",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-007",
+      "attack": "JSON nested inside a JSON string",
+      "input": "{\"msg\":\"{\\\"password\\\":\\\"FakeAdv007\\\"}\"}",
+      "secret": "FakeAdv007",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-008",
+      "attack": "newline-separated headers",
+      "input": "GET / HTTP/1.1\nHost: example.test\nAuthorization: Bearer FAKEadv008TOKEN000",
+      "secret": "FAKEadv008TOKEN000",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-009",
+      "attack": "folded continuation header",
+      "input": "Authorization:\n Bearer FAKEadv009TOKEN000",
+      "secret": "FAKEadv009TOKEN000",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-010",
+      "attack": "lowercase bearer scheme",
+      "input": "authorization: bearer FAKEadv010TOKEN000",
+      "secret": "FAKEadv010TOKEN000",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-011",
+      "attack": "credentials embedded in URL",
+      "input": "fetch https://user:FakeAdv011@example.test/x",
+      "secret": "FakeAdv011",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-012",
+      "attack": "NBSP Unicode separator",
+      "input": "password = FakeAdv012",
+      "secret": "FakeAdv012",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-013",
+      "attack": "very long value (64 KiB)",
+      "input": "password=FakeAdv013",
+      "append": {
+        "unit": "x",
+        "count": 65536
+      },
+      "secret": "FakeAdv013",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-014",
+      "attack": "private key with CRLF line endings",
+      "input": "-----BEGIN PRIVATE KEY-----\r\nFAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000\r\nSYNTHETICkeyBODYexample111111111111111111111111111111111111111\r\n-----END PRIVATE KEY-----",
+      "secret": "FAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-015",
+      "attack": "private key without END marker (truncated)",
+      "input": "-----BEGIN PRIVATE KEY-----\nFAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000",
+      "secret": "FAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-016",
+      "attack": "private key in hostile markup",
+      "input": "<pre>-----BEGIN EC PRIVATE KEY-----\nFAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000\nSYNTHETICkeyBODYexample111111111111111111111111111111111111111\n-----END EC PRIVATE KEY-----</pre>",
+      "secret": "SYNTHETICkeyBODYexample111111111111111111111111111111111111111",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-017",
+      "attack": "token punctuation: trailing comma/semicolon",
+      "input": "api_key=FAKEadv017KEY000000;",
+      "secret": "FAKEadv017KEY000000",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-018",
+      "attack": "spaced value in NDJSON (fixed in phase 11)",
+      "input": "{\"password\":\"Fake Adv 018\"}\n{\"x\":1}",
+      "secret": "Fake Adv 018",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-019",
+      "attack": "truncated quoted credential (fixed in phase 11)",
+      "input": "password=\"FakeAdv019",
+      "secret": "FakeAdv019",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-020",
+      "attack": "Windows profile path alone (fixed in phase 11)",
+      "input": "C:\\Users\\fakeadv020\\x",
+      "secret": "fakeadv020",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-021",
+      "attack": "deep nesting at limit 64",
+      "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"password=FakeAdv021\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "secret": "FakeAdv021",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-022",
+      "attack": "renamed field: pwd",
+      "input": "pwd=FakeAdv022",
+      "secret": "FakeAdv022",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-023",
+      "attack": "renamed field: passphrase",
+      "input": "passphrase=FakeAdv023",
+      "secret": "FakeAdv023",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-024",
+      "attack": "renamed field: generic token",
+      "input": "token=FakeAdv024value",
+      "secret": "FakeAdv024value",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-025",
+      "attack": "renamed field: auth",
+      "input": "auth=FakeAdv025value",
+      "secret": "FakeAdv025value",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-026",
+      "attack": "lowercase PEM header",
+      "input": "-----begin private key-----\nFAKEadv026KEYBODYsyntheticTEST00000000000000\n-----end private key-----",
+      "secret": "FAKEadv026KEYBODYsyntheticTEST00000000000000",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-027",
+      "attack": "extra space inside PEM header",
+      "input": "-----BEGIN  PRIVATE KEY-----\nFAKEadv027KEYBODYsyntheticTEST00000000000000\n-----END  PRIVATE KEY-----",
+      "secret": "FAKEadv027KEYBODYsyntheticTEST00000000000000",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-028",
+      "attack": "Cisco dotted MAC",
+      "input": "mac aabb.ccdd.ee28",
+      "secret": "aabb.ccdd.ee28",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-029",
+      "attack": "obfuscated email",
+      "input": "alice [at] example [dot] test",
+      "secret": "alice [at] example",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-030",
+      "attack": "non-ASCII email local part",
+      "input": "josé@example.test",
+      "secret": "josé",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-031",
+      "attack": "fullwidth equals sign",
+      "input": "password＝FakeAdv031",
+      "secret": "FakeAdv031",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-032",
+      "attack": "zero-width space inside key",
+      "input": "pass​word=FakeAdv032",
+      "secret": "FakeAdv032",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-033",
+      "attack": "unlisted query parameter",
+      "input": "https://example.test/cb?code=FakeAdv033code",
+      "secret": "FakeAdv033code",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-034",
+      "attack": "unquoted value containing spaces in prose",
+      "input": "password is Fake Adv 034",
+      "secret": "Fake Adv 034",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-035",
+      "attack": "tilde home path",
+      "input": "cat ~fakeadv035/.ssh/id_rsa",
+      "secret": "fakeadv035",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-036",
+      "attack": "spaced quoted value in explicit text format",
+      "input": "INFO {\"password\":\"Fake Adv 036\"}",
+      "options": {
+        "profile": "strict",
+        "format": "text"
+      },
+      "secret": "Fake Adv 036",
+      "expected": "redacted",
+      "status": "known-miss"
+    },
+    {
+      "id": "AD-037",
+      "attack": "HTML comment wrapper around suffixed credential key",
+      "input": "<!--APP_DB_PASSWORD=FakeAdv037-->",
+      "secret": "FakeAdv037",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-038",
+      "attack": "script-comment wrapper around username",
+      "input": "javascript:/*username=fakeadv038*/",
+      "secret": "fakeadv038",
+      "expected": "redacted",
+      "status": "detected"
+    },
+    {
+      "id": "AD-039",
+      "attack": "username glued to a colon-separated value",
+      "input": "login user=fakeadv039:Fake039 x=1",
+      "secret": "fakeadv039",
+      "expected": "redacted",
+      "status": "known-miss"
+    }
+  ]
+}

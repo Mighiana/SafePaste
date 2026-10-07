@@ -1,5 +1,307 @@
 # Changelog
 
+## October 2026: review fixes (concurrent decisions, rejected files, page exit, static server)
+
+Changed:
+- Worker path: while one KEEP/REDACT decision is being applied, all finding selectors
+  are disabled, and a change that cannot be applied is reverted. Before, a second
+  change made during that wait was dropped while its selector still showed it.
+- An unsupported, oversized or unreadable-by-browser file is now refused with a status
+  message only; the current input and review decisions are kept. A read that fails
+  after the user confirmed replacement still clears the review.
+- pagehide now clears the raw input textarea as well as the review, so back/forward
+  cache restoration does not bring back a pasted log.
+- evals/static-server.js (local verification only) checked containment with a string
+  prefix, so a sibling directory whose name starts with the repo name could be served.
+  It now uses path.relative and refuses malformed URL encoding.
+
+Why:
+Found in automated PR review; each was reproduced by a new test that fails on the
+previous code.
+
+Stakeholder impact:
+Leaving the page discards the pasted log (conservative local-only choice; paste it
+again on return). No detection behavior change.
+
+## October 2026: GitHub secret-scanning alert on a synthetic fixture
+
+Changed:
+GitHub secret scanning raised a "Google API Key" alert on corpus case TP-017
+(evals/corpora/true_positive.json), whose value was the synthetic
+AIzaFAKE_TEST_x... string. It is not a real key and nothing needs revoking, but
+the raw literal had the exact Google format. The fixture is now JSON-escaped
+(\u0041Iza...), so it parses to the same test input, and the pre-commit hook now
+blocks Google-key-shaped literals in fixtures even when they carry a synthetic
+marker (tests/test-hook.js covers it).
+
+Why:
+Synthetic markers satisfy this repository's hook, but not GitHub's scanner.
+
+Stakeholder impact:
+None on detection. Earlier commits still contain the literal, so the existing alert
+has to be closed in GitHub as "used in tests".
+
+## October 2026: real-browser validation and visual evidence
+
+Changed:
+One Chrome pass on the running app (localhost static server and file://) with
+synthetic samples only. Fixed two issues it found: finding REDACT/KEEP selects
+overflowed their cards at 390 px (styles.css now bounds .finding select), and the
+Cloud/API JSON sample used a 9-character api_key value below the API_KEY minimum,
+so the shipped demo showed an unredacted key field (sample value lengthened; engine
+unchanged). Replaced a stale file-picker note that claimed a fixed 2 MiB limit and
+no benchmarks. Added docs/evidence/ (8 requested screenshots, a 390 px capture and
+a 14 s muted WebM) and updated README, PORTFOLIO_PACKAGE and EXTENSION_REPORT from
+"pending" to what was actually verified.
+
+Why:
+The brief required real, non-fabricated visual evidence, and the demo sample must
+not appear to leak a credential.
+
+Stakeholder impact:
+Mobile reviewers can use finding controls without horizontal overflow. No detection
+behavior change.
+
+## October 2026: later documentation / portfolio evidence extension (phase 12)
+
+Changed:
+README.md rewritten as a technical case study (provenance table separating the
+academic base from the October 2026 extension, threat model with
+threat/control/residual limitation, security-boundary diagram, formats and
+limits, detectors, profiles, pseudonyms, review workflow, CLI exit codes,
+zero-egress controls, current test and benchmark numbers, accessibility verified
+vs unverified, limitations). New docs/PORTFOLIO_PACKAGE.md and
+docs/EXTENSION_REPORT.md built from this phase's command output. Two privacy
+fixes found while auditing invariants for the docs: the output textarea now has
+autocomplete="off" and the static checker requires it on every text field; the
+Custom network controls were labelled "IPv4" although they also change IPv6 and
+MAC handling (and loopback/private include ::1 and fc00::/7), so the labels, the
+Network category chip and the Compatibility help text now name every address
+class. Engine behavior and engineVersion (8) are unchanged.
+
+Why:
+The phase brief asked for professional documentation from real evidence. A
+profile control that silently changes more than its label says contradicts the
+"no silent behavior" requirement; form-state restoration could re-display pasted
+logs.
+
+Stakeholder impact:
+Reviewers see exactly which address classes a toggle affects. No detection or
+output change.
+
+Mapped requirement:
+User extension phase 12 (README / architecture / portfolio evidence).
+
+## October 2026: later evaluation / red-team / CI extension (phase 11)
+
+Changed:
+Added explicit synthetic JSON corpora in evals/corpora/ (true_positive 56,
+false_positive 22, ambiguous 9, adversarial 39, performance 18) with
+evals/run-corpora.js; dependency-free seeded property tests
+(tests/test-properties.js, 11 properties); focused regressions
+(tests/test-regressions.js, 9); an extended red-team scenario suite
+(evals/run-red-team-extended.js, 46 cases) whose ATTACK/EXPECTED/ACTUAL/STATUS
+table in RED_TEAM.md is generated by the runner; dependency-free syntax,
+lint-like and type-contract checks (evals/run-contract-checks.js); a GitHub
+Actions workflow (.github/workflows/ci.yml) that runs every test/eval entry point
+and a synthetic artifact-publication gate; docs/TESTING.md with conditions and
+current numbers. Engine fixes found by these suites (engineVersion 7 -> 8):
+escaped quotes, spaced JSON pairs embedded in log lines/NDJSON/truncated JSON and
+unterminated quoted credentials no longer leak; a Windows drive path alone on a
+line is no longer parsed as an HTTP header; secret-suffix keys such as
+DB_PASSWORD are detected in free text; usernames followed by markup or
+punctuation are redacted; output that starts with a marker is not re-sniffed as
+JSON, which keeps re-sanitizing idempotent. Each fix has a regression test and is
+documented in docs/ENGINE_API.md.
+
+Why:
+The phase brief asked for explicit corpora, property tests, honest red-team
+results and CI. Writing them found seven real leaks or misparses, which were
+fixed instead of relaxing assertions. Known misses (renamed fields, XML
+elements, lowercase PEM labels, dotted MAC, obfuscated email, Unicode
+look-alike separators, tilde paths, ...) are recorded, not hidden.
+
+Stakeholder impact:
+More credential shapes are removed; no previously preserved diagnostic context
+changed (all legacy commands and the false-positive corpus still pass). CI
+uses only repository fixtures; no private logs are read or uploaded.
+
+Mapped requirement:
+User extension phase 11 (evaluation corpora, property tests, red-team, ReDoS, CI).
+
+## October 2026: later CLI extension (phase 10)
+
+Changed:
+Added bin/safepaste.js, a dependency-free Node CLI that uses the same engine as
+the browser, with the large limit tier. It reads a file, `-` or stdin and
+supports --profile, --mode, --format, custom --category and network flags,
+--check, --output, --report and -q. Default policy is strict redaction. Exit
+codes: 0 for success (with --check, no effective REDACT findings), 1 when
+--check finds a finding redacted under the active policy (kept-by-policy
+detections do not count), 2 for usage, I/O, encoding, limit or engine errors.
+Output and report files are created exclusively with mode 0600. They never
+overwrite existing paths or the source and are written only after analysis
+succeeds; if any write fails, every file created by the run is removed.
+Errors print fixed codes, never input or raw messages. Added docs/CLI.md and
+tests/test-cli.js. No package.json was added: a dependency-free one with a bin
+entry was tried and broke EV-034 ("No runtime dependency manifest is
+introduced"), so the CLI runs as node bin/safepaste.js and EV-034 is unchanged.
+
+Why:
+Browser and automation use should share one engine, so their results do not
+drift. CI gates need a documented exit-code contract that fails closed.
+
+## October 2026: later worker / performance extension (phase 9)
+
+Changed:
+Added src/worker.js, a classic same-origin worker that loads src/sanitizer.js via
+importScripts and owns the pseudonym session. app.js posts jobs with increasing
+ids; replies for stale jobs or invalidated generations are dropped. Cancel, input
+edits during a job, Clear and page exit terminate the worker (which also resets
+pseudonym numbering) and start a fresh one. Workers return only fixed error codes,
+never messages, stacks or input. If construction or startup fails, the page uses
+the synchronous engine with the 2 MiB standard limit and says so in the status
+bar. The engine gains an opt-in large tier (createSession({ limits: "large" }):
+16 MiB input, 1,048,576 fields); the standard tier is unchanged. File size and
+pasted/typed length are checked before reading or analysis. Exports pause while
+a worker decision is pending. The preview DOM (1 MiB / 5,000 markers) and line
+gutter (10,000 lines) are bounded with a visible notice; exports are never cut.
+Added evals/run-benchmarks.js (quick bounds by default, --full for 1/10/16/25/50
+MiB sparse/dense; --write refuses to overwrite), docs/PERFORMANCE.md with the
+generated results, and tests/test-worker.js, which runs the real worker in a vm
+context behind a mocked Worker.
+
+Why:
+Large logs must not freeze the page, and resource overflow must never yield a
+partially sanitized export. Support is claimed only for measured sizes.
+
+## October 2026: later zero-egress / CSP enforcement extension (phase 8)
+
+Changed:
+Added a restrictive meta CSP to index.html (default/script/style/img/worker
+'self'; connect/object/frame/child/font/media/manifest/base-uri/form-action
+'none'; no unsafe-inline). Added evals/run-static-privacy-checks.js, a recursive
+static gate for network APIs, storage/cookies/cache, unsafe DOM sinks, script
+loaders, external assets, CSP shape, CLI write/network rules and package
+dependencies, with tests/test-static-privacy.js mutation tests. Strengthened
+the pre-commit hook: standalone/nested layout detection replaces the dead
+SafePaste/ path rewrite, fixtures are scanned with a synthetic-marker rule
+instead of skipped, archived history/SPEC_v1.md changes block, and the staged
+static checker runs on the staged snapshot. The verification server sends the
+same CSP plus header-only frame-ancestors and hardening headers.
+
+Why:
+"No network egress" and "no persistent log storage" become testable
+architecture properties instead of README statements.
+
+Stakeholder impact:
+No behavior change for users. Meta CSP cannot enforce frame-ancestors or
+sandbox; this is documented in docs/ZERO_EGRESS.md rather than claimed.
+Regex static checks are a regression gate, not proof against obfuscated code.
+
+Mapped requirement:
+User extension phase 8 (zero-egress enforcement, CSP, static regression checks).
+
+## October 2026: later high-confidence detector extension (phase 7)
+
+Changed:
+Added 14 bounded detector categories (GITHUB_TOKEN, GOOGLE_API_KEY,
+CLOUD_CREDENTIAL, URL_CREDENTIALS, CONNECTION_STRING_PASSWORD, PRIVATE_KEY,
+SESSION_TOKEN, COOKIE_VALUE, HEADER_CREDENTIAL, BASIC_CREDENTIALS,
+WEBHOOK_SECRET, URL_QUERY_SECRET, IPV6_ADDRESS, MAC_ADDRESS) plus explicit
+.env secret-suffix keys. Private-key blocks redact as one block. IPv6 uses a
+bounded hextet parser with loopback/unique-local/link-local/mapped classes.
+URL userinfo no longer lets an email match widen over host context.
+Report engineVersion is 7.
+
+Why:
+These formats appear in real build/support logs and were previously missed or
+only partially redacted (e.g. private key bodies after the header line).
+
+Stakeholder impact:
+More credentials are removed by default; all new secret categories are locked.
+IPv6/MAC follow visible network policy. Bare PWD keeps legacy path behavior.
+Existing 12 detectors, markers and original suites are unchanged.
+
+Mapped requirement:
+User extension phase 7. tests/test-detectors.js covers formats, near-misses,
+preserved versions/IDs, overlaps, idempotence and pathological inputs.
+
+## October 2026: later session-local pseudonymization extension (phase 6)
+
+Changed:
+Added optional mode 'pseudonymization' and createSession(). Context identifiers
+(email, usernames, path usernames, network) map to [EMAIL_n]/[USERNAME_n]/
+[PATH_n]/[IP_n] markers held only in closure memory; secrets stay redacted.
+Browser owns one session per tab; Clear/page exit reset it; mode edits revoke
+stale exports.
+
+Why:
+Keeps relationships in logs readable without preserving identities.
+
+Stakeholder impact:
+Pseudonyms reveal structure and are not anonymization; markers are not
+authenticated. No storage or network use was added.
+
+## October 2026: later browser findings review extension (phase 5)
+
+Changed:
+Integrated the existing shared review API with findings metadata, eligible
+per-finding KEEP/REDACT, inspectable profiles/custom categories and format
+selection. Added all-detection masked Preview, stale-output invalidation,
+synthetic samples, native file picker, metadata privacy report and explicit
+sanitized.log/privacy-report.json downloads. Preserved original IPv4 behavior
+as visible Compatibility, Copy/Clear, shortcuts, line gutters and drag/drop.
+Extended mocked UI and static accessibility coverage without dropping original
+behavior assertions.
+
+Why:
+Humans need to understand detection and policy decisions before sharing.
+Preview must not expose detected values merely because final output keeps them;
+input/policy edits must never leave a prior result available to copy or export.
+
+Stakeholder impact:
+Reviewers can deliberately preserve eligible context, but final Copy/log
+downloads can include that context and still require human review. No-detection
+messages never guarantee safety. New UI uses no dependencies/network/persistent
+log storage; only explicitly requested reviewed output/report files are written.
+
+Mapped requirement:
+User extension phase 5; findings review, safe override, policy inspection,
+metadata report, local samples/file-picker/export controls and accessibility.
+No pseudonyms, new detectors, CSP, worker, CLI, deployment or browser-verification
+claim. Academic version and archived evidence remain unchanged.
+
+## October 2026: later privacy-engineering core extension (phases 2–4)
+
+Changed:
+Recorded an independently reproduced baseline; repaired the standalone staged
+secret hook and corrected only active invalid Slack fixtures. Phase 2 introduces
+detector metadata, original-source spans, overlap resolution, bounded review and
+metadata-only findings. Phase 3 parses JSON, env/key=value, HTTP headers and
+logfmt with decoded-to-source maps and explicit diagnostic context. Phase 4 adds
+inspectable strict/support/incident/custom policies and per-call KEEP/REDACT
+overrides with locked credentials/tokens/secrets. Existing markers and legacy
+loopback/IPv4-toggle behavior remain. Removed inherited JWT quadratic failure
+scanning; added focused regression/property/limit/hook tests and engine API docs.
+
+Why:
+Sequential replacement shifted offsets; raw matches were not safe reports;
+escaped JSON bypassed regex-only structured detection. Explicit policies make
+privacy/usefulness trade-offs auditable instead of silently changing defaults.
+
+Stakeholder impact:
+Future browser/worker/CLI consumers share deterministic local review semantics.
+Support and incident profiles intentionally preserve network context, so humans
+must inspect policy and output before public sharing. Unknown secrets and
+unsupported formats remain limitations, not claims of complete protection.
+
+Mapped requirement:
+User extension phases 1–4; baseline audit, explainability, structured awareness,
+privacy profiles/category controls and safe human override; existing R4–R6,
+R12–R14 and PS1–PS5 privacy/diagnostic constraints. No UI, advanced detectors,
+pseudonyms, worker, CLI or deployment added. Academic history/spec/evidence intact.
+
 All meaningful changes must describe what changed, why it changed, stakeholder impact, and mapped requirement.
 
 ## v0.1

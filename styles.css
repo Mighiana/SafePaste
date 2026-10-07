@@ -11,8 +11,8 @@
 
   --text-primary: #172033;
   --text-secondary: #334256;
-  --text-muted: #607188;
-  --text-faint: #8494aa;
+  --text-muted: #526277;
+  --text-faint: #526277;
 
   --primary: #c66a1d;
   --primary-hover: #9a4f12;
@@ -87,7 +87,8 @@ p {
 
 button,
 textarea,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -516,9 +517,93 @@ button:disabled {
 button:focus-visible,
 textarea:focus-visible,
 input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
 .brand-lockup:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
+}
+
+[hidden] { display: none !important; }
+
+.policy-controls, .input-tools, .custom-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.policy-controls > label, .sample-tools > label, .input-tools > label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 0;
+}
+
+select {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+input[type="file"] { max-width: 100%; font-size: 0.82rem; }
+input[type="file"]::file-selector-button { padding: 8px; margin-right: 8px; }
+
+.policy-details { flex: 1 1 260px; min-width: 0; }
+summary { cursor: pointer; font-weight: 700; }
+.policy-details pre { max-height: 260px; overflow: auto; }
+
+.review-note, .editor-help p, .finding-detail {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+#custom-controls {
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 12px;
+}
+
+.custom-grid { align-items: flex-start; }
+.custom-grid label { display: flex; align-items: center; gap: 6px; font-size: 0.83rem; }
+.custom-grid input { width: 18px; height: 18px; accent-color: var(--primary); }
+.input-tools { padding: 14px 18px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.input-tools > p { flex-basis: 100%; }
+.sample-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; min-width: 0; }
+.editor-help { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 12px 18px; background: var(--surface); }
+
+.review-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1px; background: var(--border); }
+.findings-panel, .report-panel { min-width: 0; padding: 18px; background: var(--surface); }
+.review-grid h2 { font-size: 1.05rem; }
+#finding-count { font-family: var(--mono); color: var(--warning); }
+#findings-list { padding: 0; list-style: none; max-height: 560px; overflow-y: auto; }
+.finding { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.finding h3 { margin-bottom: 6px; font-family: var(--mono); font-size: 0.78rem; overflow-wrap: anywhere; }
+.finding p { font-size: 0.83rem; margin-bottom: 8px; overflow-wrap: anywhere; }
+.finding label { display: grid; gap: 5px; font-size: 0.82rem; font-weight: 700; }
+.finding select { width: 100%; min-width: 0; max-width: 100%; }
+.findings-pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; }
+#privacy-report, #policy-details { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 0.8rem; }
+#privacy-report { padding: 12px; border: 1px solid var(--border); background: var(--surface-secondary); }
+.report-panel .button-row { justify-content: flex-start; margin: 14px 0; }
+
+@media (max-width: 980px) {
+  .review-grid, .editor-help { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .policy-controls > label, .sample-tools, .sample-tools > label, .input-tools > label { width: 100%; }
+  .policy-controls select, .sample-tools select { width: 100%; }
+  .findings-panel, .report-panel, .editor-help, .input-tools { padding: 12px; }
 }
 
 .editor-grid {
@@ -660,8 +745,8 @@ textarea,
   font-size: 0.82rem;
   line-height: 1.65;
   outline: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  word-break: normal;
 }
 
 textarea {
@@ -717,6 +802,13 @@ textarea[readonly] {
 
 .drop-overlay small {
   color: var(--text-muted);
+}
+
+.preview-limit {
+  display: block;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .redaction-bar {

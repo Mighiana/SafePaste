@@ -1,8 +1,169 @@
 # AI Worklog
 
+## Later extension — phase 12 (2026-10-07)
+
+New branch from the phase 11 tip e96a69f; all 24 inherited entry points passed
+before changes. Docs were written from fresh command output (all 24 suites,
+`run-benchmarks.js --full`, CLI runs on the synthetic CI fixture,
+`inspectDetectors()`/`inspectPolicies()`), not copied from earlier summaries.
+Privacy-invariant audit findings, fixed with regressions:
+- The output textarea had no `autocomplete="off"`; the static checker had no rule
+  for it. Added the `HTML_TEXT_FIELD_AUTOCOMPLETE` rule first; it flagged the
+  output textarea, then the attribute was added.
+- Custom-profile labels "IPv4 addresses" / "Preserve loopback IPv4" / "Preserve
+  RFC1918 private IPv4" understated the engine: the same controls keep or redact
+  IPv6 and MAC, and loopback/private also cover ::1 and fc00::/7. Verified by
+  running the engine, relabelled, and added a regression that reads index.html and
+  checks the labels against the detector catalog and engine output (run against
+  the old index.html it fails: 9/10, missing IPv6). The academic accessibility
+  check that pins the legacy "Redact non-loopback IPv4 addresses" toggle text was
+  kept; only the help text below it was extended.
+My own mistakes: a python heredoc again turned `\b` into a backspace in the new
+checker rule; the first regex also used `\b` before attribute names, which the
+mutated-copy test caught (`\s` is correct). The previous README still said
+"Analysis is still synchronous" next to the phase 9 worker note; the rewrite removes
+that contradiction. Screenshots and the demo clip are left pending for the browser stage.
+No dependencies, browser/server setup, PR or deployment.
+
+## Later extension — phase 11 (2026-10-07)
+
+New branch from the phase 10 tip 529ce70; all inherited suites passed before changes.
+Real failures found by the new corpora/property tests and fixed (with regressions):
+- `password="Fake\"Tail"` leaked the tail after the escaped quote.
+- `"password": "spaced value"` inside a log line, NDJSON or truncated JSON leaked.
+- `password="unterminated` (truncated line) leaked.
+- `C:\Users\alice` alone on a line parsed as an HTTP header; the username leaked.
+- `<!--DB_PASSWORD=...-->` leaked in text format: `\bpassword` cannot match after `_`.
+- `username=alice</b>` and `alice*/` leaked: the username lookahead rejected them.
+- Re-sanitizing output that began with `[REDACTED_PRIVATE_KEY]` was sniffed as JSON
+  and widened a header marker, breaking idempotence.
+My own mistakes, corrected without removing assertions: an extended red-team case
+called a locked KEEP without catching KEEP_FORBIDDEN (the runner now expects the
+coded error); RT-X46 asserted that `</script>` survives after an unquoted password,
+but the engine conservatively absorbs it because passwords may contain `<`/`>`;
+the case now asserts the surrounding markup and records the trade-off. A python
+heredoc turned `\b` into a backspace in the fixture-loading check; caught and fixed.
+The CI fixture is `.txt` because `.gitignore` ignores `*.log` on purpose.
+No dependencies, browser/server setup, PR or private logs.
+
+## Later extension — phase 7 (2026-10-07)
+
+Added 14 bounded detectors (catalog 12 -> 26, original order/markers retained).
+Real failures found and fixed while writing tests/test-detectors.js:
+- Hex-word text such as dead::beef parsed as IPv6 -> now requires a decimal digit.
+- Build IDs like 10:20:30:40:50:60 matched as MAC -> now requires an A-F letter.
+- Re-sanitizing user:[REDACTED_PASSWORD]@ re-wrapped the marker -> idempotence check.
+- user:pass@host also matched EMAIL; the union merge hid the host -> weaker matches
+  starting inside detected userinfo are dropped.
+- Two of my own test assertions were wrong (a tautological URL check; X-Api-Key
+  expected HEADER_CREDENTIAL though legacy API_KEY has higher priority by design).
+  Corrected to the intended behavior; no assertion removed.
+test-core catalog length updated 12 -> 26 with an exact check of the original 12.
+Bare PWD stays the legacy path rule; only connection-string chains classify Pwd.
+No dependencies, network primitives, storage, browser/server setup or PR.
+
+## Later extension — phase 6 (2026-10-07)
+
+Verified review-UI tip 9581e18 and core ancestry; clean new branch from that tip.
+Independent baseline on this VM: unit 38/38, eval 73/73, exact properties 91/91
+across 21 cases, red-team 15/15, UI smoke PASS, product 5/5, accessibility static
+18/18, core 9/9, parser 16/16, policy 22/22, hook PASS, mocked review UI 22/22.
+Added shared createSession maps, explicit mode, private decoded mapping keys,
+identifier-only pseudonyms and marker idempotence/reservation. Browser Clear/page
+exit resets maps; edits/mode changes invalidate exports but retain tab relationships.
+Inherited clear-spy test now observes session.createReview (all assertions retained).
+New 6/6 focused pseudonym tests include generated injection/stability properties,
+JSON escaping/Unicode, secret locks, mocked Copy/KEEP Preview/stale exports/reset.
+All original/inherited suites independently rerun successfully after phase 6.
+No dependencies, persisted logs, network primitives, browser/server setup or PR.
+
 This file records meaningful AI-assisted engineering decisions and real failures. It intentionally omits trivial command-by-command noise.
 
 ## Entries
+
+### 2026-10-07: Later browser review extension, phase 5 only
+
+- Started a new branch from the phase 4 handoff; independently ran all seven
+  inherited commands before edits: unit 38/38, eval 73/73, exact 91/91 across
+  21 cases, red-team 15/15, mocked smoke pass, product 5/5, static accessibility
+  10/10. No historical evidence or engine behavior was changed.
+- Replaced the browser's legacy adapter consumption with closure-backed
+  createReview/apply/clear. Kept a visibly selected Compatibility policy to
+  preserve original loopback/toggle behavior; added inspectable explicit
+  profiles, custom categories and format selection.
+- Preview decision: use a separate all-REDACT apply on the same original-source
+  findings, never re-scan final output. This masks policy/manual KEEP findings,
+  including escaped JSON. Copy/downloads use the final reviewed plain text.
+  Entering Preview clears the hidden output textarea. Findings/report contain
+  metadata only; no original values are inserted into those DOM trees.
+- State decision: input/policy/format changes destroy the review and overrides,
+  invalidate Copy/exports and clear output/report. Async clipboard feedback
+  and file reads cannot resurrect earlier state. Clear/replacement confirmation
+  follows AGENTS.md's destructive-action rule.
+- Added explicit fixed-filename log/report exports with short-lived, revoked
+  blob URLs, native file picker alongside drop, synthetic-only samples,
+  metadata counts, 50-finding pages, tab keyboard navigation and live status.
+  No dependencies, network, automatic storage or backend were introduced.
+- Mock migration initially broke the original JSON.stringify clear-state
+  assertion through circular parent pointers. Fixed the mock with non-enumerable
+  parent links; preserved every original behavior assertion. IPv4 change now
+  requires explicit Sanitize, as required for stale-result invalidation; all
+  prior post-sanitization IPv4/email/credential assertions remain.
+- Hook invocation initially failed because the inherited script is mode 100644.
+  Ran the exact hook through sh before committing, not bypassing or modifying it.
+- Validation here is Node/mock/static only. Real browser layout, contrast,
+  accessibility, file/download and clipboard behavior remain the parent testing
+  agent's responsibility. No dev server, browser, recording, PR or deploy ran.
+
+### 2026-10-07: Later shared-core extension, phases 2–4 only
+
+- Task: Audit all current and historical repository files, reproduce seven
+  baseline commands, implement span-aware metadata/structured parsing/policies
+  in separate commits, without dependencies or UI changes.
+- Baseline observed: unit 37/38 and eval 72/73; exact 91/91, red-team 15/15,
+  mocked UI smoke pass, mocked product 5/5, static accessibility 10/10.
+- Actual failure: active Slack fixtures were an ordinary placeholder, not Slack
+  syntax. Corrected current unit/JSON/CSV data to a synthetic Slack-shaped value,
+  retained assertions, and never taught production to recognize the placeholder.
+- Harness failure: hook expected a child SafePaste directory and scanned nothing.
+  Fixed actual Git-root scanning, NUL-safe staged paths, error propagation and
+  no printing of matched values. Test/eval/history/documentation exemptions are
+  explicit; this is still a heuristic guard, not comprehensive secret scanning.
+- Core decision: collect on original source, coalesce overlapping spans, apply
+  once. New immutable findings/reports omit raw values; the legacy adapter alone
+  retains original/raw matches for compatibility. Closure-backed review can be
+  cleared; secure runtime memory erasure is not claimed.
+- Parser iteration failures: auto env recognition initially swallowed mixed
+  prose; raw-vs-parsed filtering initially missed a Bearer token crossing a scalar
+  boundary; username classification initially hid expected email categories.
+  Existing tests/evals caught these. Narrowed auto env classification, retained
+  crossing raw findings and kept the existing username syntax. Fixed the actual
+  bugs rather than changing assertions.
+- Context decision: version/release and parsed request/trace/build fields exempt
+  IPv4 only; credential/email detectors still run. JSON replacements map escapes
+  to original spans and preserve layout, with quoted primitive replacements.
+- Policy decision: legacy remains implicit. Explicit strict includes loopback;
+  support preserves RFC1918/loopback; incident preserves IPv4 evidence; custom
+  exposes controls but never disables high-risk credentials/tokens/secrets.
+  Overrides are validated per-call decisions, never arbitrary replacement text.
+- Bounded-scanning failure found: repeated `eyJFAKETEST-` runs demonstrated
+  inherited JWT regex scaling (1k/2k/4k repeats: 35.2/114.0/468.5 ms in this Node
+  run). Lexing maximal token runs and walking dot components produced
+  2.8/1.5/3.0 ms for the same diagnostic samples; 40k repeats took 29.6 ms.
+  These are single-run diagnostics, **not** stable benchmark/support claims.
+  Added the 440k-code-unit malformed-token regression plus 240 generated syntax
+  comparisons against the prior JWT grammar. Large-file worker benchmarks remain
+  a later stage.
+- Final full-suite failure: strict same-realm Object-prototype validation rejected
+  options originating in the mocked browser VM, breaking UI smoke and all five
+  product checks. Fixed validation to accept native Object prototypes across JS
+  realms while rejecting custom prototypes/arrays, and added an explicit realm
+  regression. No UI or harness assertions were changed.
+- Accepted scope: phases 2, 3, 4 are separate working commits; no new detector
+  categories, YAML dependencies, UI, pseudonyms, worker, CLI, PR or deployment.
+  Historical v1/spec and recorded historical evidence remain unchanged. Exact
+  final verification is in docs/CORE_STAGE_RESULT.md; real browser checks belong
+  to the parent stage, not these mocked/static results.
 
 ### 2026-08-13: Project initialization
 
@@ -386,3 +547,37 @@ Human response
 
 Permanent control added
 -> Updated path username tests/evals and documented that historical evidence files preserve prior observed labels.
+
+### Phase 9-10 failures caught by existing tests
+
+AI behavior
+-> The worker refactor replaced the input-limit status text with a friendlier message that dropped the `INPUT_LIMIT` code. The first large limit tier allowed only 400,000 fields, which made 10 MiB auto-format logs fail with `FIELD_LIMIT`. The CLI phase also added a `package.json` for an npm `bin` entry.
+
+Why it was problematic
+-> Users and tests rely on the explicit code. A field cap below the measured size made the 16 MiB claim false for structured logs. A manifest contradicts EV-034, even with no dependencies in it.
+
+How it was detected
+-> `tests/test-review-ui.js` ("input limits fail closed"), `evals/run-benchmarks.js --full` and `evals/run-evals.js` (EV-034 FAIL).
+
+Human response
+-> Put the code back in the message without changing the assertion. Raise the large-tier field limit to 1,048,576 and record measured results in `docs/PERFORMANCE.md`. Remove `package.json` and keep EV-034 as it was; the CLI runs as `node bin/safepaste.js`.
+
+Permanent control added
+-> `tests/test-worker.js`, `tests/test-cli.js` (which asserts there is no manifest), the benchmark bounds and the unchanged EV-034.
+
+### PR review findings after browser validation
+
+AI behavior
+-> In the worker path, finding selectors stayed live while a decision was pending, so a second change was dropped while the selector still displayed it. Rejected file selections (wrong type, too large) called the same invalidation as a confirmed replacement and wiped the current review. pagehide ended the review but left the raw input in the textarea for back/forward cache restoration. The local verification server checked path containment with a string prefix.
+
+Why it was problematic
+-> A selector showing KEEP or REDACT that was never applied misrepresents what Copy/download will contain. Refusing a file should not destroy work. Keeping a pasted log after the user leaves contradicts the session-only design. A prefix check could serve a sibling directory.
+
+How it was detected
+-> Automated review on PR #1, then reproduced by new tests that fail on the previous code.
+
+Human response
+-> Lock selectors while a job is pending and revert unapplied changes; report rejected files with status text only; clear the input on pagehide; use path.relative containment and refuse malformed URL encoding.
+
+Permanent control added
+-> `tests/test-worker.js` (pending-decision lock), `tests/test-review-ui.js` (rejected files keep review, page exit clears input; the existing file-failure test now distinguishes pre-read refusal from failed confirmed reads), `tests/test-static-privacy.js` (server traversal cases).

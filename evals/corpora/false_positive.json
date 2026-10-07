@@ -1,0 +1,250 @@
+{
+  "corpus": "false_positive",
+  "description": "MUST PRESERVE: listed diagnostic substrings must remain; unchanged=true means output must equal input. Default options: strict profile.",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "id": "FP-001",
+      "topic": "versions",
+      "title": "dotted software version after version keyword",
+      "input": "upgraded agent to version 1.2.3.4 and restarted",
+      "preserve": [
+        "1.2.3.4"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-002",
+      "topic": "versions",
+      "title": "release JSON field with IPv4 shape",
+      "input": "{\"release\":\"10.0.0.1\",\"app_version\":\"4.3.2.1\"}",
+      "preserve": [
+        "10.0.0.1",
+        "4.3.2.1"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-003",
+      "topic": "diagnostics",
+      "title": "request/trace/build IDs",
+      "input": "request_id=abc-123 trace_id=7f3a9c build_id=2026.10.07.1",
+      "preserve": [
+        "abc-123",
+        "7f3a9c",
+        "2026.10.07.1"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-004",
+      "topic": "diagnostics",
+      "title": "UUID correlation id",
+      "input": "correlation=550e8400-e29b-41d4-a716-446655440000 status=200",
+      "preserve": [
+        "550e8400-e29b-41d4-a716-446655440000"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-005",
+      "topic": "diagnostics",
+      "title": "hex commit SHA",
+      "input": "deployed commit 3f2c9e1b7a4d5c6e8f9a0b1c2d3e4f5a6b7c8d9e",
+      "preserve": [
+        "3f2c9e1b7a4d5c6e8f9a0b1c2d3e4f5a6b7c8d9e"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-006",
+      "topic": "paths",
+      "title": "non-home system paths",
+      "input": "reading /var/log/app/server.log and /etc/nginx/nginx.conf",
+      "preserve": [
+        "/var/log/app/server.log",
+        "/etc/nginx/nginx.conf"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-007",
+      "topic": "diagnostics",
+      "title": "timestamps and durations",
+      "input": "2026-10-07T11:43:00Z GET /api/items 200 12.5ms",
+      "preserve": [
+        "2026-10-07T11:43:00Z",
+        "12.5ms"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-008",
+      "topic": "diagnostics",
+      "title": "HTTP status and method line",
+      "input": "HTTP/1.1 503 Service Unavailable",
+      "preserve": [
+        "HTTP/1.1 503"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-009",
+      "topic": "credentials",
+      "title": "password policy prose without assignment",
+      "input": "the password must be rotated every 90 days",
+      "preserve": [
+        "password must be rotated"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-010",
+      "topic": "credentials",
+      "title": "empty and null credential fields",
+      "input": "{\"password\":\"\",\"secret\":null}",
+      "preserve": [
+        "\"password\":\"\"",
+        "\"secret\":null"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-011",
+      "topic": "network",
+      "title": "IPv6-like clock times are not addresses",
+      "input": "backup ran 12:30:45 and 01:02:03",
+      "preserve": [
+        "12:30:45",
+        "01:02:03"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-012",
+      "topic": "network",
+      "title": "invalid IPv4 octets",
+      "input": "value 999.300.1.2 rejected",
+      "preserve": [
+        "999.300.1.2"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-013",
+      "topic": "network",
+      "title": "loopback kept by support profile",
+      "input": "listening on 127.0.0.1:8080 and [::1]:9090",
+      "options": {
+        "profile": "support"
+      },
+      "preserve": [
+        "127.0.0.1",
+        "::1"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-014",
+      "topic": "network",
+      "title": "private RFC1918 kept by support profile",
+      "input": "upstream 10.1.2.3 healthy",
+      "options": {
+        "profile": "support"
+      },
+      "preserve": [
+        "10.1.2.3"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-015",
+      "topic": "markers",
+      "title": "existing redaction markers stay idempotent",
+      "input": "user=[REDACTED_USERNAME] email=[EMAIL_1]",
+      "preserve": [
+        "[REDACTED_USERNAME]",
+        "[EMAIL_1]"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-016",
+      "topic": "diagnostics",
+      "title": "Kubernetes pod and image tags",
+      "input": "pod web-7d9f8b6c5-x2x4z image=registry.example.test/web:1.4.2",
+      "preserve": [
+        "web-7d9f8b6c5-x2x4z",
+        "web:1.4.2"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-017",
+      "topic": "diagnostics",
+      "title": "short hex error codes",
+      "input": "error 0x8007000E at 0x7ffd1234",
+      "preserve": [
+        "0x8007000E",
+        "0x7ffd1234"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-018",
+      "topic": "unicode",
+      "title": "Unicode message text",
+      "input": "错误: 连接超时 — Verbindung fehlgeschlagen ✓",
+      "preserve": [
+        "错误: 连接超时",
+        "Verbindung fehlgeschlagen"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-019",
+      "topic": "json",
+      "title": "JSON with escaped diagnostics",
+      "input": "{\"msg\":\"path \\\"C:\\\\temp\\\" not found\",\"code\":\"E_NOENT\"}",
+      "preserve": [
+        "E_NOENT",
+        "not found"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-020",
+      "topic": "diagnostics",
+      "title": "semver ranges and build metadata",
+      "input": "requires node >=18.0.0 <23 (v22.20.0+build.7)",
+      "preserve": [
+        ">=18.0.0",
+        "v22.20.0+build.7"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-021",
+      "topic": "network",
+      "title": "incident profile keeps public network evidence",
+      "input": "blocked 198.51.100.7 after 20 attempts",
+      "options": {
+        "profile": "incident"
+      },
+      "preserve": [
+        "198.51.100.7"
+      ],
+      "unchanged": true
+    },
+    {
+      "id": "FP-022",
+      "topic": "diagnostics",
+      "title": "word token in prose is not a secret",
+      "input": "the token bucket refilled; tokens=40",
+      "preserve": [
+        "tokens=40"
+      ],
+      "unchanged": true
+    }
+  ]
+}

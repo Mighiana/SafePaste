@@ -1,84 +1,6 @@
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-const sanitizer = require("../src/sanitizer");
-
-function createElement(id) {
-  return {
-    id,
-    value: "",
-    checked: true,
-    disabled: false,
-    textContent: "",
-    children: [],
-    listeners: {},
-    appendChild(child) {
-      this.children.push(child);
-    },
-    replaceChildren(...children) {
-      this.children = children;
-    },
-    addEventListener(type, handler) {
-      this.listeners[type] = handler;
-    },
-    async dispatch(type) {
-      if (!this.listeners[type]) {
-        throw new Error(`No listener registered for ${this.id}:${type}`);
-      }
-      await this.listeners[type]();
-    },
-    focus() {
-      this.focused = true;
-    },
-    select() {
-      this.selected = true;
-    }
-  };
-}
-
-const elements = {
-  "input-text": createElement("input-text"),
-  "output-text": createElement("output-text"),
-  "sanitize-button": createElement("sanitize-button"),
-  "copy-button": createElement("copy-button"),
-  "clear-button": createElement("clear-button"),
-  "redact-ip": createElement("redact-ip"),
-  "redaction-count": createElement("redaction-count"),
-  "category-list": createElement("category-list"),
-  "status-message": createElement("status-message")
-};
-
-let copiedText = "";
-
-const sandbox = {
-  window: {
-    SafePasteSanitizer: sanitizer
-  },
-  document: {
-    getElementById(id) {
-      if (!elements[id]) {
-        throw new Error(`Missing test element: ${id}`);
-      }
-      return elements[id];
-    },
-    createElement(tagName) {
-      const element = createElement(tagName);
-      element.tagName = tagName.toUpperCase();
-      return element;
-    }
-  },
-  navigator: {
-    clipboard: {
-      async writeText(value) {
-        copiedText = value;
-      }
-    }
-  }
-};
-
-vm.createContext(sandbox);
-const appJs = fs.readFileSync(path.resolve(__dirname, "..", "app.js"), "utf8");
-vm.runInContext(appJs, sandbox, { filename: "app.js" });
+const { buildHarness } = require("../tests/ui-harness");
+const harness = buildHarness();
+const { elements } = harness;
 
 async function run() {
   const input = [
@@ -102,7 +24,7 @@ async function run() {
   assert(elements["copy-button"].disabled === false, "copy button should be enabled");
 
   await elements["copy-button"].dispatch("click");
-  assert(copiedText === output, "copy button should write sanitized text to clipboard API");
+  assert(harness.copied() === output, "copy button should write sanitized text to clipboard API");
 
   await elements["clear-button"].dispatch("click");
   assert(elements["input-text"].value === "", "input should clear");
