@@ -1,0 +1,52 @@
+# Publishes only the static browser app (index.html, styles.css, app.js, src/) to GitHub Pages.
+# docs/, evals/, tests/, history/ and the CLI are not published. The app makes no network
+# requests; Pages cannot send response headers, so the <meta> CSP in index.html applies.
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Checks before publishing
+        run: |
+          node evals/run-static-privacy-checks.js
+          node tests/test-sanitizer.js
+          node tests/test-review-ui.js
+          node tests/test-worker.js
+      - name: Assemble site (app files only)
+        run: |
+          mkdir -p _site/src
+          cp index.html styles.css app.js _site/
+          cp src/sanitizer.js src/worker.js _site/src/
+          touch _site/.nojekyll
+          find _site -type f | sort
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

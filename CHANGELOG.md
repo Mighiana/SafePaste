@@ -1,5 +1,15 @@
 # Changelog
 
+## October 2026: GitHub Pages demo
+
+Added:
+- `.github/workflows/pages.yml` runs the static privacy, sanitizer, review-UI and
+  worker checks, then publishes only the browser app files to GitHub Pages.
+
+Stakeholder impact:
+A public demo link. Analysis remains in the browser; Pages adds no backend. Pages
+cannot send headers, so `frame-ancestors` is not enforced on the hosted copy.
+
 ## October 2026: review fixes (concurrent decisions, rejected files, page exit, static server)
 
 Changed:
