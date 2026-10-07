@@ -117,6 +117,34 @@ test("report engineVersion reflects the detection change", () => {
   assert.strictEqual(engine.createReview("x").report.engineVersion, 8);
 });
 
+test("network controls name every address class they change (was: labels said IPv4 only)", () => {
+  const html = require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
+  const label = id => {
+    const match = html.match(new RegExp('<label><input id="' + id + '"[^>]*>([^<]*)</label>'));
+    assert(match, id + " label");
+    return match[1];
+  };
+  const classes = { IP_ADDRESS: "IPv4", IPV6_ADDRESS: "IPv6", MAC_ADDRESS: "MAC" };
+  const network = engine.inspectDetectors().filter(detector => detector.control === "network");
+  assert.deepStrictEqual(network.map(detector => detector.category).sort(), Object.keys(classes).sort());
+  const input = "a=10.1.2.3 b=fd12:3456:789a::1 c=aa:bb:cc:dd:ee:ff d=127.0.0.1 e=::1";
+  const kept = sanitized(input, { profile: "custom", categories: { network: "KEEP" } });
+  const legacyOff = sanitized(input, { redactIpAddresses: false });
+  const help = html.match(/<span class="toggle-help">([^<]*)<\/span>/)[1];
+  for (const detector of network) {
+    assert(label("category-network").includes(classes[detector.category]), classes[detector.category]);
+    assert(help.includes(classes[detector.category]) || detector.category === "IP_ADDRESS", "legacy help " + detector.category);
+  }
+  assert.strictEqual(kept, input);
+  assert.strictEqual(legacyOff, input);
+  const loopback = sanitized(input, { profile: "custom", network: { preserveLoopback: true } });
+  assert(loopback.includes("d=127.0.0.1") && loopback.includes("e=::1"));
+  assert(label("preserve-loopback").includes("127/8") && label("preserve-loopback").includes("::1") && help.includes("::1"));
+  const privateKept = sanitized(input, { profile: "custom", network: { preservePrivate: true } });
+  assert(privateKept.includes("a=10.1.2.3") && privateKept.includes("b=fd12:3456:789a::1"));
+  assert(label("preserve-private").includes("RFC1918") && label("preserve-private").includes("fc00::/7"));
+});
+
 let failed = 0;
 for (const [name, run] of tests) {
   try { run(); console.log("PASS " + name); }
