@@ -4,6 +4,56 @@ This file records meaningful AI-assisted engineering decisions and real failures
 
 ## Entries
 
+### 2026-10-07: Later shared-core extension, phases 2–4 only
+
+- Task: Audit all current and historical repository files, reproduce seven
+  baseline commands, implement span-aware metadata/structured parsing/policies
+  in separate commits, without dependencies or UI changes.
+- Baseline observed: unit 37/38 and eval 72/73; exact 91/91, red-team 15/15,
+  mocked UI smoke pass, mocked product 5/5, static accessibility 10/10.
+- Actual failure: active Slack fixtures were an ordinary placeholder, not Slack
+  syntax. Corrected current unit/JSON/CSV data to a synthetic Slack-shaped value,
+  retained assertions, and never taught production to recognize the placeholder.
+- Harness failure: hook expected a child SafePaste directory and scanned nothing.
+  Fixed actual Git-root scanning, NUL-safe staged paths, error propagation and
+  no printing of matched values. Test/eval/history/documentation exemptions are
+  explicit; this is still a heuristic guard, not comprehensive secret scanning.
+- Core decision: collect on original source, coalesce overlapping spans, apply
+  once. New immutable findings/reports omit raw values; the legacy adapter alone
+  retains original/raw matches for compatibility. Closure-backed review can be
+  cleared; secure runtime memory erasure is not claimed.
+- Parser iteration failures: auto env recognition initially swallowed mixed
+  prose; raw-vs-parsed filtering initially missed a Bearer token crossing a scalar
+  boundary; username classification initially hid expected email categories.
+  Existing tests/evals caught these. Narrowed auto env classification, retained
+  crossing raw findings and kept the existing username syntax. Fixed the actual
+  bugs rather than changing assertions.
+- Context decision: version/release and parsed request/trace/build fields exempt
+  IPv4 only; credential/email detectors still run. JSON replacements map escapes
+  to original spans and preserve layout, with quoted primitive replacements.
+- Policy decision: legacy remains implicit. Explicit strict includes loopback;
+  support preserves RFC1918/loopback; incident preserves IPv4 evidence; custom
+  exposes controls but never disables high-risk credentials/tokens/secrets.
+  Overrides are validated per-call decisions, never arbitrary replacement text.
+- Bounded-scanning failure found: repeated `eyJFAKETEST-` runs demonstrated
+  inherited JWT regex scaling (1k/2k/4k repeats: 35.2/114.0/468.5 ms in this Node
+  run). Lexing maximal token runs and walking dot components produced
+  2.8/1.5/3.0 ms for the same diagnostic samples; 40k repeats took 29.6 ms.
+  These are single-run diagnostics, **not** stable benchmark/support claims.
+  Added the 440k-code-unit malformed-token regression plus 240 generated syntax
+  comparisons against the prior JWT grammar. Large-file worker benchmarks remain
+  a later stage.
+- Final full-suite failure: strict same-realm Object-prototype validation rejected
+  options originating in the mocked browser VM, breaking UI smoke and all five
+  product checks. Fixed validation to accept native Object prototypes across JS
+  realms while rejecting custom prototypes/arrays, and added an explicit realm
+  regression. No UI or harness assertions were changed.
+- Accepted scope: phases 2, 3, 4 are separate working commits; no new detector
+  categories, YAML dependencies, UI, pseudonyms, worker, CLI, PR or deployment.
+  Historical v1/spec and recorded historical evidence remain unchanged. Exact
+  final verification is in docs/CORE_STAGE_RESULT.md; real browser checks belong
+  to the parent stage, not these mocked/static results.
+
 ### 2026-08-13: Project initialization
 
 - Task: Establish SafePaste methodology and preserved v1 requirements before writing product code.

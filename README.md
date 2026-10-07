@@ -6,6 +6,27 @@ SafePaste is a privacy-aware browser-based log sanitizer for developers, IT supp
 
 This repository was built as an academic Human-Centered AI software engineering project. The implementation is intentionally small, local-only, dependency-free, and auditable.
 
+## Later core engineering extension (October 2026)
+
+Phases 2–4 add a shared, dependency-free engine under the existing UMD entry
+point: original-source findings with accurate spans, deterministic overlap
+resolution, bounded JSON/env/header/logfmt parsing, inspectable privacy profiles,
+metadata-only reports, and safe per-finding review overrides. Valid JSON escaping
+and layout are preserved where possible; full parsed credential values are
+redacted. These capabilities were **not part of the academic base version**.
+
+The browser still uses the legacy IPv4 checkbox/API; profile/review controls are
+engine APIs, **not yet a new UI**, CLI, worker, pseudonymizer or advanced detector
+set. Omitting a profile preserves legacy loopback behavior. Explicit strict
+redacts all supported IPv4; support keeps RFC1918/loopback; incident keeps network
+evidence; custom exposes category/network controls. Credentials/tokens/secrets
+cannot be kept. Human review is still required.
+
+See [engine API and limits](docs/ENGINE_API.md) and
+[independent baseline/provenance contract](docs/EXTENSION_BASELINE.md).
+Do not export the legacy `sanitize()` result as a report: it contains original
+input. New `analyze()`/review reports expose metadata only.
+
 ## Motivation
 
 Technical logs often contain useful debugging context mixed with emails, IP addresses, file paths, passwords, API keys, and access tokens. SafePaste helps users review and redact likely sensitive values before sending logs to AI tools, issue trackers, support systems, chat, email, or forums.
@@ -70,6 +91,10 @@ Run from the `SafePaste/` directory:
 
 ```text
 node tests/test-sanitizer.js
+node tests/test-core.js
+node tests/test-parsers.js
+node tests/test-policies.js
+node tests/test-hook.js
 node evals/run-evals.js
 node evals/graders/exact-property-grader.js
 node evals/run-red-team.js

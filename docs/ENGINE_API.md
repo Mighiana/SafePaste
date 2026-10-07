@@ -14,14 +14,16 @@ scripts are required. UI integration is a later stage.
   These are guardrails, not performance/support claims for multi-megabyte files.
 - `analyze(input, options)` returns `{findings, report}` without original values.
 - `createReview(input, options)` retains input only in a closure and exposes
-  immutable `{findings, report, apply(), clear()}`. `apply()` returns
+  immutable `{findings, report, policy, apply(overrides), clear()}`. `apply()` returns
   `{sanitized, findings, report}`. It never scans generated replacements.
   `clear()` releases the retained source reference and disables apply. This is
   not a guarantee of secure memory erasure by the JavaScript runtime.
 - `sanitize(input, {redactIpAddresses})` remains the compatibility adapter with
   `{original, sanitized, matches, categories, redactionCount}`. **Do not export
   this result as a privacy report**: `original` and `matches[].text` contain raw
-  input. New reports/findings do not. Match offsets now refer to original input.
+  input. New reports/findings do not. Match offsets now refer to original input;
+  matches describe replacement spans, not whole headers/home paths. With an
+  explicit profile, legacy counts/categories/matches include only REDACT actions.
 
 Findings have deterministic positional IDs (`finding-1`, etc.), rule IDs,
 category/control/severity/reason/description, marker replacement, action, KEEP
@@ -84,3 +86,87 @@ Errors have stable `code` values and no input excerpts: `INPUT_LIMIT`,
 `REVIEW_CLEARED`. No partial output is returned on a limit/option error.
 Inspect metadata before a human explicitly chooses to share output; deterministic
 rules do not guarantee detection of unknown secrets.
+
+## Inspectable policy and override API (phase 4)
+
+No profile is silently activated: omitting `profile` retains `legacy`, including
+loopback preservation and `{redactIpAddresses:false}`. Explicit profiles detect
+all supported IPv4, even values kept by policy, so reviewers can override them.
+Legacy excludes loopback/disabled IP findings to preserve historical behavior.
+Version/diagnostic field exceptions exclude those IPv4-shaped candidates in all
+profiles; they cannot be overridden without changing context/review input.
+
+| Explicit `profile` | Credentials/tokens/secrets | Email/username/home identity | IPv4 |
+| --- | --- | --- | --- |
+| `strict` | REDACT (locked) | REDACT | REDACT, including loopback |
+| `support` | REDACT (locked) | REDACT | KEEP RFC1918 private and 127/8 loopback; REDACT other |
+| `incident` | REDACT (locked) | REDACT | KEEP network evidence; **not for public sharing by default** |
+| `custom` | REDACT (locked) | REDACT unless explicitly configured | REDACT unless explicitly configured |
+
+`inspectPolicies()` returns deeply immutable default configurations for these
+four profiles. `inspectPolicy(options)` resolves/validates the exact options
+used by review, including legacy. Reports include this complete resolved policy.
+`getCapabilities()` also exposes formats, profiles, controls, actions,
+`lockedCategories`, and `maxOverrides` (100,000).
+
+Custom options use control names, not individual detector names:
+
+```js
+const engine = require('../src/sanitizer');
+const options = {
+  profile: 'custom',
+  format: 'auto',
+  categories: { email: 'REDACT', usernames: 'REDACT', paths: 'REDACT', network: 'REDACT' },
+  network: { preserveLoopback: true, preservePrivate: false }
+};
+const session = engine.createReview('client_ip=127.0.0.1 user=alice', options);
+// These contain no original values:
+console.log(session.policy, session.findings);
+const ip = session.findings.find(finding => finding.control === 'network');
+// Only explicitly requested apply produces output. Consumers own copying/export.
+const result = session.apply({ [ip.id]: 'REDACT' });
+// Export result.report only, not the session or the legacy sanitize result.
+session.clear();
+```
+
+Controls are `credentials`, `tokens`, `secrets`, `email`, `usernames`, `paths`,
+`network`. AWS keys belong to locked credentials; no general cloud-identifier
+detector/control has been added. Locked controls may be explicitly REDACT but
+never KEEP. Unknown option/control/profile names fail closed; combining explicit
+profiles with the legacy IPv4 flag fails as ambiguous, rather than ignoring it.
+Category/network settings are custom-only. No arbitrary replacement strings,
+pseudonyms or unbounded user rules are accepted.
+
+`session.apply({[findingId]:'KEEP'|'REDACT'})` applies a complete *per-call*
+override map. Omitted IDs take the initial policy action; calls do not accumulate
+state. Applying identical overrides is deterministic. A rejected override returns
+no output and does not mutate the review. Unknown IDs/actions, non-plain-object
+maps and KEEP on a high-risk/overlapping credential finding are rejected. IDs
+belong to that review's original source; never reuse them after editing input.
+KEEP may reveal original text in the **explicitly returned output**, not in
+findings/report/preview metadata. A future UI must make that human choice clear.
+
+Final findings include `action`, `policyReason` (category/network/human decision),
+`allowKeep`, and IPv4 `networkKind`: `loopback`, `private` (RFC1918), `other`.
+Other does not claim an address is publicly routable; link-local, multicast,
+documentation and special-use ranges remain other. No IPv6 was added here.
+Reports include input code-unit length/physical line count, detected/redacted/
+kept totals, immutable per-control counts, final findings, active policy and
+engine-local `networkEgress:'none'`, `persistentStorage:'none'`. These are not a
+guarantee about browser extensions, recipient behavior or unknown leaked secrets.
+
+Additional option/override errors: `INVALID_OPTIONS`, `UNKNOWN_OPTION`,
+`UNKNOWN_PROFILE`, `AMBIGUOUS_POLICY`, `CUSTOM_ONLY`, `INVALID_CATEGORIES`,
+`UNKNOWN_CATEGORY`, `INVALID_ACTION`, `INVALID_NETWORK_POLICY`, `KEEP_FORBIDDEN`,
+`INVALID_OVERRIDES`, `OVERRIDE_LIMIT`, `UNKNOWN_FINDING`.
+
+## Bounded scanning and stage evidence
+
+The inherited JWT regex exhibited quadratic failure on hyphen-separated repeated
+`eyJ` prefixes. Detection now lexes maximal token runs and walks dot-component
+windows in linear scanning work before resolving overlaps. Existing JWT syntax
+and marker behavior are retained; the regression suite includes a 440,000-code-
+unit malformed prefix run. Parser/string walks are bounded and linear; candidate
+sorting and interval lookup are O(n log n), not repeated replacement/rescanning.
+This is not the later large-file worker/performance feature, nor a comprehensive
+ReDoS audit. Multi-megabyte browser responsiveness remains unmeasured.

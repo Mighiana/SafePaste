@@ -1,5 +1,35 @@
 # Changelog
 
+## October 2026: later privacy-engineering core extension (phases 2–4)
+
+Changed:
+Recorded an independently reproduced baseline; repaired the standalone staged
+secret hook and corrected only active invalid Slack fixtures. Phase 2 introduces
+detector metadata, original-source spans, overlap resolution, bounded review and
+metadata-only findings. Phase 3 parses JSON, env/key=value, HTTP headers and
+logfmt with decoded-to-source maps and explicit diagnostic context. Phase 4 adds
+inspectable strict/support/incident/custom policies and per-call KEEP/REDACT
+overrides with locked credentials/tokens/secrets. Existing markers and legacy
+loopback/IPv4-toggle behavior remain. Removed inherited JWT quadratic failure
+scanning; added focused regression/property/limit/hook tests and engine API docs.
+
+Why:
+Sequential replacement shifted offsets; raw matches were not safe reports;
+escaped JSON bypassed regex-only structured detection. Explicit policies make
+privacy/usefulness trade-offs auditable instead of silently changing defaults.
+
+Stakeholder impact:
+Future browser/worker/CLI consumers share deterministic local review semantics.
+Support and incident profiles intentionally preserve network context, so humans
+must inspect policy and output before public sharing. Unknown secrets and
+unsupported formats remain limitations, not claims of complete protection.
+
+Mapped requirement:
+User extension phases 1–4; baseline audit, explainability, structured awareness,
+privacy profiles/category controls and safe human override; existing R4–R6,
+R12–R14 and PS1–PS5 privacy/diagnostic constraints. No UI, advanced detectors,
+pseudonyms, worker, CLI or deployment added. Academic history/spec/evidence intact.
+
 All meaningful changes must describe what changed, why it changed, stakeholder impact, and mapped requirement.
 
 ## v0.1

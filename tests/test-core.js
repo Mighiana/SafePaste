@@ -47,4 +47,22 @@ test("legacy IPv4 opt-out stays scoped", function () {
   assert(result.sanitized.includes("198.51.100.1"));
   assert(!result.sanitized.includes("alice") && !result.sanitized.includes("Fake123"));
 });
+test("malformed JWT runs scan boundedly and valid embedded JWTs retain markers", function () {
+  const hostile = "eyJFAKETEST-".repeat(40000);
+  assert.strictEqual(engine.sanitize(hostile, { format: "text" }).sanitized, hostile);
+  const jwt = "eyJFAKETEST00.eyJFAKETEST00.FAKETEST00";
+  assert.strictEqual(engine.sanitize("prefix-" + jwt + ".suffix").sanitized, "prefix-[REDACTED_JWT].suffix");
+  assert.strictEqual(engine.sanitize(jwt + "- end").sanitized, "[REDACTED_JWT]- end");
+  const previousSyntax = /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
+  for (const prefix of ["", "prefix-", "prefix.", "_", "-"]) {
+    for (const header of ["eyJFAKETEST00", "eyJFAKETEST00-", "notjwt", "eyJshort"]) {
+      for (const payload of ["eyJFAKETEST00", "bad", "eyJFAKETEST00-"]) {
+        for (const suffix of ["", "-", ".more", " end"]) {
+          const input = prefix + header + "." + payload + ".FAKETEST00" + suffix;
+          assert.strictEqual(engine.sanitize(input, { format: "text" }).sanitized, input.replace(previousSyntax, "[REDACTED_JWT]"));
+        }
+      }
+    }
+  }
+});
 console.log(`${count}/${count} core tests passed`);

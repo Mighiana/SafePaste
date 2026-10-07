@@ -70,7 +70,7 @@
       {
         category: "JWT",
         label: REDACTION_LABELS.JWT,
-        pattern: /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+        pattern: /[A-Za-z0-9_.-]+/g
       },
       {
         category: "AWS_ACCESS_KEY",
@@ -119,7 +119,9 @@
         category: "IP_ADDRESS",
         label: REDACTION_LABELS.IP_ADDRESS,
         pattern: /(^|[^A-Za-z0-9_.-])((?:\d{1,3}\.){3}\d{1,3})(?=$|[^A-Za-z0-9_.-]|\.(?=$|[\s"')\]}]))/g,
-        validator: isRedactableIpv4
+        validator: function (candidate, context) {
+          return options.includeLoopback ? isValidIpv4(candidate) && !hasVersionFieldPrefix(context.source, context.index) : isRedactableIpv4(candidate, context);
+        }
       });
     }
 
@@ -151,6 +153,75 @@
   }));
   const BY_CATEGORY = Object.create(null);
   DETECTORS.forEach(function (detector) { BY_CATEGORY[detector.category] = detector; });
+  const CONTROLS = Object.freeze(["credentials", "tokens", "secrets", "email", "usernames", "paths", "network"]);
+  const LOCKED = Object.freeze(["credentials", "tokens", "secrets"]);
+  const PROFILE_NAMES = Object.freeze(["strict", "support", "incident", "custom"]);
+  const FORMATS = Object.freeze(["auto", "text", "json", "env", "headers", "logfmt"]);
+
+  function plainObject(value) {
+    if (value === null || typeof value !== "object") return false;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype === null) return true;
+    const constructor = Object.getOwnPropertyDescriptor(prototype, "constructor");
+    // Accept native Object prototypes from other realms, not custom prototypes.
+    return Boolean(constructor && typeof constructor.value === "function" &&
+      constructor.value.prototype === prototype &&
+      Function.prototype.toString.call(constructor.value) === Function.prototype.toString.call(Object));
+  }
+
+  function inspectPolicy(options) {
+    const settings = options === undefined ? {} : options;
+    if (!plainObject(settings)) fail("INVALID_OPTIONS");
+    const allowed = ["profile", "format", "redactIpAddresses", "categories", "network"];
+    if (Object.keys(settings).some(function (key) { return allowed.indexOf(key) === -1; })) fail("UNKNOWN_OPTION");
+    const name = settings.profile === undefined ? "legacy" : settings.profile;
+    if (name !== "legacy" && PROFILE_NAMES.indexOf(name) === -1) fail("UNKNOWN_PROFILE");
+    if (name !== "legacy" && settings.redactIpAddresses !== undefined) fail("AMBIGUOUS_POLICY");
+    if (name !== "custom" && (settings.categories !== undefined || settings.network !== undefined)) fail("CUSTOM_ONLY");
+    const categories = {};
+    CONTROLS.forEach(function (control) { categories[control] = "REDACT"; });
+    if (name === "incident" || (name === "legacy" && settings.redactIpAddresses === false)) categories.network = "KEEP";
+    const network = { preserveLoopback: name === "support" || name === "legacy",
+      preservePrivate: name === "support" };
+    if (name === "custom") {
+      if (settings.categories !== undefined) {
+        if (!plainObject(settings.categories)) fail("INVALID_CATEGORIES");
+        Object.keys(settings.categories).forEach(function (control) {
+          if (CONTROLS.indexOf(control) === -1) fail("UNKNOWN_CATEGORY");
+          const action = settings.categories[control];
+          if (action !== "REDACT" && action !== "KEEP") fail("INVALID_ACTION");
+          if (action === "KEEP" && LOCKED.indexOf(control) !== -1) fail("KEEP_FORBIDDEN");
+          categories[control] = action;
+        });
+      }
+      if (settings.network !== undefined) {
+        if (!plainObject(settings.network)) fail("INVALID_NETWORK_POLICY");
+        Object.keys(settings.network).forEach(function (key) {
+          if (!(key === "preserveLoopback" || key === "preservePrivate") || typeof settings.network[key] !== "boolean") fail("INVALID_NETWORK_POLICY");
+          network[key] = settings.network[key];
+        });
+      }
+    }
+    const descriptions = {
+      legacy: "Compatibility: preserve loopback; redact other IPv4 unless explicitly disabled.",
+      strict: "Redact all supported sensitive categories including loopback IPv4.",
+      support: "Redact credentials/identity; preserve RFC1918 private and loopback IPv4 for troubleshooting.",
+      incident: "Redact credentials/identity; preserve IPv4 network evidence. Not a public-sharing default.",
+      custom: "Explicit category/network controls; credentials, tokens and secrets remain locked to REDACT."
+    };
+    return Object.freeze({ name: name, description: descriptions[name],
+      categories: Object.freeze(categories), network: Object.freeze(network), lockedCategories: LOCKED,
+      networkClassification: "loopback 127/8; private RFC1918; other (not a routability claim)",
+      diagnosticExceptions: "Explicit version/release and parsed request/trace/build ID fields exempt IPv4 only" });
+  }
+
+  function ipv4Kind(value) {
+    const octets = value.split(".").map(Number);
+    if (octets[0] === 127) return "loopback";
+    if (octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168)) return "private";
+    return "other";
+  }
 
   function fail(code) {
     const error = new Error("SafePaste: " + code);
@@ -294,7 +365,7 @@
   }
 
   function parseInput(source, requested) {
-    if (["auto", "text", "json", "env", "headers", "logfmt"].indexOf(requested) === -1) fail("UNKNOWN_FORMAT");
+    if (FORMATS.indexOf(requested) === -1) fail("UNKNOWN_FORMAT");
     let format = requested;
     if (format === "auto") {
       const trimmed = source.trimStart();
@@ -345,10 +416,10 @@
     }
     const candidates = parsed.format === "json" ? [] : collect(source, options).filter(function (candidate) { return !overlapsUnit(candidate); });
     units.forEach(function (unit) {
-      function add(start, end, detector) {
+      function add(start, end, detector, networkKind) {
         if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
         candidates.push({ start: unit.starts ? unit.starts[start] : unit.start + start,
-          end: unit.ends ? unit.ends[end - 1] : unit.start + end, detector: detector,
+          end: unit.ends ? unit.ends[end - 1] : unit.start + end, detector: detector, networkKind: networkKind,
           replacement: parsed.format === "json" && !unit.quoted ? JSON.stringify(detector.replacement) : detector.replacement });
       }
       const category = explicitCategory(unit.key);
@@ -359,10 +430,34 @@
       }
       collect(unit.value, options).forEach(function (candidate) {
         if (candidate.detector.category === "IP_ADDRESS" && diagnosticKey(unit.key)) return;
-        add(candidate.start, candidate.end, candidate.detector);
+        add(candidate.start, candidate.end, candidate.detector, candidate.networkKind);
       });
     });
     return candidates;
+  }
+
+  function collectJwtToken(token, offset, candidates) {
+    let firstStart = 0;
+    let firstEnd = token.indexOf(".");
+    if (firstEnd === -1) return;
+    let secondEnd = token.indexOf(".", firstEnd + 1);
+    while (secondEnd !== -1) {
+      let thirdEnd = token.indexOf(".", secondEnd + 1);
+      if (thirdEnd === -1) thirdEnd = token.length;
+      const first = token.slice(firstStart, firstEnd);
+      const second = token.slice(firstEnd + 1, secondEnd);
+      let signatureEnd = thirdEnd;
+      while (signatureEnd > secondEnd + 1 && token[signatureEnd - 1] === "-") signatureEnd -= 1;
+      const header = /(?:^|-)(eyJ[A-Za-z0-9_-]{8,})$/.exec(first);
+      if (header && /^eyJ[A-Za-z0-9_-]{8,}$/.test(second) && signatureEnd - secondEnd - 1 >= 8) {
+        if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
+        candidates.push({ start: offset + firstEnd - header[1].length,
+          end: offset + signatureEnd, detector: BY_CATEGORY.JWT });
+      }
+      firstStart = firstEnd + 1;
+      firstEnd = secondEnd;
+      secondEnd = thirdEnd === token.length ? -1 : thirdEnd;
+    }
   }
 
   function collect(source, options) {
@@ -370,6 +465,10 @@
     buildRules(options).forEach(function (rule) {
       let match;
       while ((match = rule.pattern.exec(source)) !== null) {
+        if (rule.category === "JWT") {
+          collectJwtToken(match[0], match.index, candidates);
+          continue;
+        }
         let start = match.index;
         let value = match[0];
         if (rule.category === "AUTHORIZATION_HEADER") {
@@ -387,7 +486,8 @@
         }
         if (rule.validator && !rule.validator(value, { source: source, index: start })) continue;
         if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
-        candidates.push({ start: start, end: start + value.length, detector: BY_CATEGORY[rule.category] });
+        candidates.push({ start: start, end: start + value.length, detector: BY_CATEGORY[rule.category],
+          networkKind: rule.category === "IP_ADDRESS" ? ipv4Kind(value) : undefined });
       }
     });
     return candidates;
@@ -405,10 +505,11 @@
         if (candidate.detector.priority > previous.detector.priority) {
           previous.detector = candidate.detector;
           previous.replacement = candidate.replacement;
+          previous.networkKind = candidate.networkKind;
         }
       } else {
         resolved.push({ start: candidate.start, end: candidate.end, detector: candidate.detector,
-          replacement: candidate.replacement });
+          replacement: candidate.replacement, networkKind: candidate.networkKind });
       }
     });
     return resolved;
@@ -436,16 +537,26 @@
     return Object.freeze({ line: low + 1, column: offset - starts[low] + 1 });
   }
 
-  function findingMetadata(candidates, starts) {
+  function findingMetadata(candidates, starts, policy) {
     return Object.freeze(candidates.map(function (candidate, index) {
       const detector = candidate.detector;
+      let action = policy.categories[detector.control];
+      let policyReason = action === "KEEP" ? "category-preserved" : "category-redacted";
+      if (detector.control === "network" && action === "REDACT" &&
+        ((candidate.networkKind === "loopback" && policy.network.preserveLoopback) ||
+        (candidate.networkKind === "private" && policy.network.preservePrivate))) {
+        action = "KEEP";
+        policyReason = "network-context-preserved";
+      }
       return Object.freeze({ id: "finding-" + (index + 1), ruleId: detector.id,
         category: detector.category, control: detector.control, severity: detector.severity,
         reason: detector.reason, description: detector.description,
         certainty: detector.certainty, replacementPolicy: detector.replacementPolicy,
         start: candidate.start, end: candidate.end,
         position: position(starts, candidate.start), endPosition: position(starts, candidate.end),
-        replacement: candidate.replacement || detector.replacement, action: "REDACT", allowKeep: detector.allowKeep });
+        replacement: candidate.replacement || detector.replacement, action: action,
+        policyReason: policyReason, networkKind: detector.control === "network" ? candidate.networkKind : null,
+        allowKeep: detector.allowKeep });
     }));
   }
 
@@ -453,27 +564,72 @@
     const pieces = [];
     let cursor = 0;
     findings.forEach(function (finding) {
-      pieces.push(source.slice(cursor, finding.start), finding.replacement);
+      pieces.push(source.slice(cursor, finding.start), finding.action === "KEEP" ? source.slice(finding.start, finding.end) : finding.replacement);
       cursor = finding.end;
     });
     pieces.push(source.slice(cursor));
     return pieces.join("");
   }
 
+  function prepareReview(source, settings, policy) {
+    const starts = lineStarts(source);
+    const parsed = parseInput(source, settings.format === undefined ? "auto" : settings.format);
+    const detectionOptions = { redactIpAddresses: policy.name !== "legacy" || settings.redactIpAddresses !== false,
+      includeLoopback: policy.name !== "legacy" };
+    const findings = findingMetadata(resolve(collectParsed(source, detectionOptions, parsed)), starts, policy);
+    return { findings: findings, format: parsed.format, parseStatus: parsed.status, inputLines: starts.length };
+  }
+
+  function makeReport(length, analysis, policy, findings) {
+    const counts = {};
+    CONTROLS.forEach(function (control) { counts[control] = { detected: 0, redacted: 0, kept: 0 }; });
+    let redacted = 0;
+    findings.forEach(function (finding) {
+      const count = counts[finding.control];
+      count.detected += 1;
+      if (finding.action === "REDACT") { count.redacted += 1; redacted += 1; }
+      else count.kept += 1;
+    });
+    CONTROLS.forEach(function (control) { Object.freeze(counts[control]); });
+    return Object.freeze({ engineVersion: 4, profile: policy.name, policy: policy,
+      format: analysis.format, parseStatus: analysis.parseStatus,
+      inputLength: length, inputLines: analysis.inputLines, totalFindings: findings.length,
+      redacted: redacted, kept: findings.length - redacted,
+      categoryCounts: Object.freeze(counts), findings: findings,
+      networkEgress: "none", persistentStorage: "none" });
+  }
+
+  function applyOverrides(findings, overrides) {
+    if (overrides === undefined) return findings;
+    if (!plainObject(overrides)) fail("INVALID_OVERRIDES");
+    const keys = Object.keys(overrides);
+    if (keys.length > LIMITS.maxCandidates) fail("OVERRIDE_LIMIT");
+    const ids = new Set(findings.map(function (finding) { return finding.id; }));
+    keys.forEach(function (id) {
+      if (!ids.has(id)) fail("UNKNOWN_FINDING");
+      if (overrides[id] !== "KEEP" && overrides[id] !== "REDACT") fail("INVALID_ACTION");
+    });
+    return Object.freeze(findings.map(function (finding) {
+      if (!Object.prototype.hasOwnProperty.call(overrides, finding.id)) return finding;
+      const action = overrides[finding.id];
+      if (action === "KEEP" && !finding.allowKeep) fail("KEEP_FORBIDDEN");
+      return Object.freeze(Object.assign({}, finding, { action: action, policyReason: "human-override" }));
+    }));
+  }
+
   function createReview(input, options) {
     let source = checkInput(input);
-    const starts = lineStarts(source);
-    const settings = options || {};
-    const parsed = parseInput(source, settings.format || "auto");
-    const findings = findingMetadata(resolve(collectParsed(source, settings, parsed)), starts);
-    const report = Object.freeze({ engineVersion: 3, profile: "legacy", format: parsed.format, parseStatus: parsed.status,
-      inputLength: source.length, inputLines: starts.length, totalFindings: findings.length,
-      redacted: findings.length, kept: 0, findings: findings });
+    const policy = inspectPolicy(options);
+    const analysis = prepareReview(source, options || {}, policy);
+    const findings = analysis.findings;
+    const report = makeReport(source.length, analysis, policy, findings);
     let active = true;
-    return Object.freeze({ findings: findings, report: report,
-      apply: function () {
+    return Object.freeze({ findings: findings, report: report, policy: policy,
+      apply: function (overrides) {
         if (!active) fail("REVIEW_CLEARED");
-        return { sanitized: applyFindings(source, findings), findings: findings, report: report };
+        const decided = applyOverrides(findings, overrides);
+        return { sanitized: applyFindings(source, decided), findings: decided,
+          report: makeReport(source.length, analysis, policy, decided) };
       },
       clear: function () { source = ""; active = false; }
     });
@@ -490,7 +646,7 @@
     const source = checkInput(input);
     const review = createReview(source, options);
     const applied = review.apply();
-    const matches = applied.findings.map(function (finding) {
+    const matches = applied.findings.filter(function (finding) { return finding.action === "REDACT"; }).map(function (finding) {
       return { category: finding.category, text: source.slice(finding.start, finding.end), index: finding.start };
     });
     review.clear();
@@ -504,7 +660,11 @@
     analyze: analyze,
     createReview: createReview,
     inspectDetectors: function () { return DETECTORS; },
-    getCapabilities: function () { return LIMITS; },
+    inspectPolicy: inspectPolicy,
+    inspectPolicies: function () { return Object.freeze(PROFILE_NAMES.map(function (profile) { return inspectPolicy({ profile: profile }); })); },
+    getCapabilities: function () { return Object.freeze(Object.assign({}, LIMITS,
+      { formats: FORMATS, profiles: PROFILE_NAMES, controls: CONTROLS, actions: Object.freeze(["REDACT", "KEEP"]),
+        lockedCategories: LOCKED, maxOverrides: LIMITS.maxCandidates })); },
     isValidIpv4: isValidIpv4,
     isLoopbackIpv4: isLoopbackIpv4,
     REDACTION_LABELS: REDACTION_LABELS
