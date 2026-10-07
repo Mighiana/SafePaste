@@ -70,6 +70,12 @@ Run it only on logs produced inside the same runner, never upload private
 logs elsewhere, and treat exit 2 as a failure. A clean `--check` means no
 *supported* pattern matched; it does not prove a log is free of secrets.
 
+A working example is the `artifact-gate-example` job in
+`.github/workflows/ci.yml`. It runs on the committed synthetic fixture
+`evals/fixtures/ci/synthetic-build-log.txt`: `--check` on the raw log exits 1, so
+publication is blocked. The sanitized copy then passes `--check`, and only that copy
+and its metadata report are uploaded.
+
 ## Tests
 
 `node tests/test-cli.js` runs the real executable as a child process with

@@ -132,7 +132,7 @@ See [docs/CLI.md](docs/CLI.md) for options, safe-write rules and exit codes.
 
 ## How To Test
 
-Run from the `SafePaste/` directory:
+Run from the repository root (no install step; Node 18+):
 
 ```text
 node tests/test-sanitizer.js
@@ -152,7 +152,17 @@ node evals/run-ui-smoke.js
 node evals/run-product-behavior.js
 node evals/run-accessibility-checks.js
 node evals/run-static-privacy-checks.js
+node tests/test-pseudonyms.js
+node tests/test-detectors.js
+node tests/test-regressions.js
+node tests/test-properties.js
+node evals/run-corpora.js
+node evals/run-red-team-extended.js
+node evals/run-contract-checks.js
 ```
+
+The same commands run in GitHub Actions (`.github/workflows/ci.yml`) on synthetic
+fixtures only. Current results and conditions: [docs/TESTING.md](docs/TESTING.md).
 
 To write final eval results:
 

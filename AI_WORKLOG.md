@@ -1,5 +1,26 @@
 # AI Worklog
 
+## Later extension — phase 11 (2026-10-07)
+
+New branch from the phase 10 tip 529ce70; all inherited suites passed before changes.
+Real failures found by the new corpora/property tests and fixed (with regressions):
+- `password="Fake\"Tail"` leaked the tail after the escaped quote.
+- `"password": "spaced value"` inside a log line, NDJSON or truncated JSON leaked.
+- `password="unterminated` (truncated line) leaked.
+- `C:\Users\alice` alone on a line parsed as an HTTP header; the username leaked.
+- `<!--DB_PASSWORD=...-->` leaked in text format: `\bpassword` cannot match after `_`.
+- `username=alice</b>` and `alice*/` leaked: the username lookahead rejected them.
+- Re-sanitizing output that began with `[REDACTED_PRIVATE_KEY]` was sniffed as JSON
+  and widened a header marker, breaking idempotence.
+My own mistakes, corrected without removing assertions: an extended red-team case
+called a locked KEEP without catching KEEP_FORBIDDEN (the runner now expects the
+coded error); RT-X46 asserted that `</script>` survives after an unquoted password,
+but the engine conservatively absorbs it because passwords may contain `<`/`>`;
+the case now asserts the surrounding markup and records the trade-off. A python
+heredoc turned `\b` into a backspace in the fixture-loading check; caught and fixed.
+The CI fixture is `.txt` because `.gitignore` ignores `*.log` on purpose.
+No dependencies, browser/server setup, PR or private logs.
+
 ## Later extension — phase 7 (2026-10-07)
 
 Added 14 bounded detectors (catalog 12 -> 26, original order/markers retained).
