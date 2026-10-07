@@ -102,7 +102,32 @@ Node v22.20.0, linux/x64, 8 CPU, engine-only (no DOM), single run per case, full
 | dense | synthetic logfmt | auto | large | 50 | fail-closed INPUT_LIMIT | 0 |
 
 
-## What is claimed
+## Phase 11 re-run (engineVersion 8, 2026-10-07)
+
+The table above was measured at engineVersion 7 (phase 9) and is kept as it was
+recorded. After the phase 11 detection fixes, `/usr/bin/time -v node
+evals/run-benchmarks.js --full` was re-run on the same kind of VM (Node v22.20.0,
+linux/x64, Intel Xeon Platinum 8375C, 8 vCPU, 31 GiB; single run): **PASS, 64 cases
+within bounds**, wall clock 24.5 s, peak RSS 766,628 KB. Selected rows (ms):
+
+| Case | Phase 9 (v7) | Phase 11 (v8) |
+| --- | --- | --- |
+| sparse 1 MiB, auto, large | 281 | 335 |
+| dense 1 MiB, text, large (41,717 findings) | 152 | 167 |
+| dense 1 MiB, auto, large (41,717 findings) | 447 | 466 |
+| sparse 10 MiB, text, large | 696 | 990 |
+| sparse 10 MiB, auto, large | 2808 | 3256 |
+| sparse 16 MiB, text, large | 1104 | 1388 |
+| sparse 16 MiB, auto, large | 4496 | 5093 |
+
+Fail-closed results did not change (dense 10/16 MiB: `FINDING_LIMIT`/`FIELD_LIMIT`;
+25/50 MiB: `INPUT_LIMIT`; standard-tier 1 MiB auto: `FIELD_LIMIT`). Sparse large
+inputs are roughly 10-40% slower; the likely cause is the extra embedded JSON-pair
+lexing and suffix-key rules, but run-to-run noise was not controlled, so this is
+not a precise attribution. Phase 11 ReDoS fixture timings are in
+[TESTING.md](TESTING.md).
+
+## What is claimed (phase 9 wording; still holds at engineVersion 8)
 
 - Pathological inputs (~1.8 MiB each: repeated characters, colon and hex-colon
   runs, dotted numerics, malformed bearer headers, unterminated quotes, escaped
@@ -117,4 +142,3 @@ Node v22.20.0, linux/x64, 8 CPU, engine-only (no DOM), single run per case, full
 - Peak resident memory for the whole `--full` run was about 820 MB in Node
   (measured once with `/usr/bin/time -v`); browser memory is not measured here.
 - Nothing above 16 MiB is supported.
-
