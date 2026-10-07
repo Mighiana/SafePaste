@@ -114,7 +114,7 @@ test("new lexical paths stay bounded on pathological inputs", () => {
 });
 
 test("report engineVersion reflects the detection change", () => {
-  assert.strictEqual(engine.createReview("x").report.engineVersion, 8);
+  assert.strictEqual(engine.createReview("x").report.engineVersion, 9);
 });
 
 test("network controls name every address class they change (was: labels said IPv4 only)", () => {
@@ -124,10 +124,10 @@ test("network controls name every address class they change (was: labels said IP
     assert(match, id + " label");
     return match[1];
   };
-  const classes = { IP_ADDRESS: "IPv4", IPV6_ADDRESS: "IPv6", MAC_ADDRESS: "MAC" };
+  const classes = { IP_ADDRESS: "IPv4", IPV6_ADDRESS: "IPv6", MAC_ADDRESS: "MAC", INTERNAL_HOSTNAME: "hostname" };
   const network = engine.inspectDetectors().filter(detector => detector.control === "network");
   assert.deepStrictEqual(network.map(detector => detector.category).sort(), Object.keys(classes).sort());
-  const input = "a=10.1.2.3 b=fd12:3456:789a::1 c=aa:bb:cc:dd:ee:ff d=127.0.0.1 e=::1";
+  const input = "a=10.1.2.3 b=fd12:3456:789a::1 c=aa:bb:cc:dd:ee:ff d=127.0.0.1 e=::1 f=db.internal";
   const kept = sanitized(input, { profile: "custom", categories: { network: "KEEP" } });
   const legacyOff = sanitized(input, { redactIpAddresses: false });
   const help = html.match(/<span class="toggle-help">([^<]*)<\/span>/)[1];

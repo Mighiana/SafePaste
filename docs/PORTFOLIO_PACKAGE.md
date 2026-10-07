@@ -200,14 +200,14 @@ fixtures. Desktop screenshots are full-page at 1585 px width.
 | --- | --- | --- |
 | 1 | Main review workspace (Compatibility, web sample) | [01-review-workspace.png](evidence/01-review-workspace.png) |
 | 2 | Structured JSON sanitization (Strict, Cloud/API JSON) | [02-structured-json.png](evidence/02-structured-json.png) |
-| 3 | Findings review panel (locked PASSWORD finding) | [03-findings-panel.png](evidence/03-findings-panel.png) |
+| 3 | Findings review panel (Support .env sample, "Why?" open) | [03-findings-panel.png](evidence/03-findings-panel.png) |
 | 4 | Privacy profile selection (Custom, email kept) | [04-privacy-profiles.png](evidence/04-privacy-profiles.png) |
 | 5 | Pseudonymized output | [05-pseudonymized-output.png](evidence/05-pseudonymized-output.png) |
 | 6 | Privacy report (auth headers, locked Authorization) | [06-privacy-report.png](evidence/06-privacy-report.png) |
 | 7 | CLI usage (terminal) | [07-cli-usage.png](evidence/07-cli-usage.png) |
 | 8 | Evaluation / red-team results (terminal) | [08-eval-redteam-results.png](evidence/08-eval-redteam-results.png) |
 | 9 | Mobile 390 px (Security incident profile) | [09-mobile-390.png](evidence/09-mobile-390.png) |
-| 10 | 13 s muted VP9 WebM: load synthetic log, sanitize, masked view, findings, KEEP decision, report | [demo.webm](evidence/demo.webm) |
+| 10 | 15 s muted VP9 WebM: empty state, load synthetic log (Support), sanitize, masked view, KEEP decision, click a finding to select it in the output, Hide all, report | [demo.webm](evidence/demo.webm) |
 
 The browser pass found two issues, fixed before capture: finding REDACT/KEEP selects
 overflowed their cards at 390 px, and the Cloud/API sample's 9-character `api_key`

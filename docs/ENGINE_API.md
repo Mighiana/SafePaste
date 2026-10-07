@@ -77,7 +77,8 @@ markers). All use bounded scanners/validators, never entropy guessing. Overlaps 
 merged by priority: `PRIVATE_KEY` (120) outranks everything, so secrets inside a
 key block produce one finding/replacement. Credentials/tokens/secrets stay locked
 (REDACT only, never pseudonymized); IPv6/MAC are `network` review identifiers.
-Report `engineVersion` was 7 for phase 7; it is 8 since the phase 11 fixes below.
+Report `engineVersion` was 7 for phase 7, 8 after the phase 11 fixes below, and is 9
+since `INTERNAL_HOSTNAME` was added (catalog 27).
 
 | Category | Exact rule | Marker |
 |---|---|---|
@@ -95,6 +96,7 @@ Report `engineVersion` was 7 for phase 7; it is 8 since the phase 11 fixes below
 | URL_QUERY_SECRET | value of exact query keys token, access_token, refresh_token, id_token, auth_token, api_key, apikey, client_secret, secret, password, passwd, sig, signature, x-amz-signature, x-amz-security-token, x-goog-signature, session, sessionid, session_id, jsessionid (>= 4 chars) | `[REDACTED_URL_SECRET]` |
 | IPV6_ADDRESS | RFC 4291 text parsed into 8 hextets (one `::`, optional dotted IPv4 tail, 2-45 chars, contains a decimal digit, not all-zero); bracketed URL hosts; link-local `%zone` included | `[REDACTED_IPV6_ADDRESS]` / `[IPV6_n]` |
 | MAC_ADDRESS | six hex octets, one consistent `:` or `-` separator, at least one A-F letter | `[REDACTED_MAC_ADDRESS]` / `[MAC_n]` |
+| INTERNAL_HOSTNAME | 1-8 dotted DNS labels ending in `.internal`, `.corp`, `.lan`, `.local`, `.localdomain`, `.intranet` or `.home.arpa`, word-bounded; skipped after `/` or `\` unless it is a `//` URL host, after `.`, for reverse-DNS/code prefixes (`com.`, `java.`, `this.`...), all-numeric labels and version fields. Public domains are never flagged. `network` review identifier, gated like IPv4/IPv6/MAC | `[REDACTED_INTERNAL_HOSTNAME]` / `[HOST_n]` |
 
 .env-style secret-suffix keys map to existing categories: `*_PASSWORD`/`*_PASSWD` ->
 PASSWORD; `*_API_KEY`, `*_SECRET_KEY`, `*_ACCESS_TOKEN`, `*_CLIENT_SECRET` -> API_KEY;
@@ -212,7 +214,7 @@ profiles; they cannot be overridden without changing context/review input.
 `inspectPolicies()` returns deeply immutable default configurations for these
 four profiles. `inspectPolicy(options)` resolves/validates the exact options
 used by review, including legacy. Reports include this complete resolved policy.
-`getCapabilities()` also exposes formats, profiles, controls, actions,
+`getCapabilities()` also exposes `engineVersion` (the same value reports carry), formats, profiles, controls, actions,
 `lockedCategories`, and `maxOverrides` (100,000).
 
 Custom options use control names, not individual detector names:

@@ -48,7 +48,7 @@ sending the very data that should not leave the machine.
 
 | Threat | Control | Residual limitation |
 | --- | --- | --- |
-| Accidental credential / API-token sharing | 26 deterministic detectors; credentials, tokens and secrets are locked to REDACT in every profile and never pseudonymized | Unknown or renamed formats (`pwd=`, `token=`, `auth=`, unlisted headers) can be missed |
+| Accidental credential / API-token sharing | 27 deterministic detectors; credentials, tokens and secrets are locked to REDACT in every profile and never pseudonymized | Unknown or renamed formats (`pwd=`, `token=`, `auth=`, unlisted headers) can be missed |
 | Private-key exposure | Whole PEM block from BEGIN through matching END is one finding; no END redacts to end of input | Lowercase or non-standard PEM labels are missed |
 | PII exposure (email, usernames, home paths) | Email syntax, explicit username fields, home-path usernames; redaction or session pseudonyms | Names in prose, obfuscated email (`[at]`), `~alice` paths are not detected |
 | Network information disclosure | Validated IPv4/IPv6/MAC with visible per-profile policy and `networkKind` | Dotted Cisco MACs and `addr:port` after unbracketed IPv6 are known gaps |
@@ -73,7 +73,7 @@ sending the very data that should not leave the machine.
  │  sync fallback if workers blocked     1. format detection (auto/explicit)│
  │                                       2. bounded parsing: JSON, env,      │
  │                                          headers, logfmt, embedded pairs  │
- │                                       3. detector catalog (26 rules)      │
+ │                                       3. detector catalog (27 rules)      │
  │                                       4. overlap / conflict resolution    │
  │                                       5. policy engine (profile, custom)  │
  │                                       6. redaction or session pseudonyms  │
@@ -140,7 +140,7 @@ YAML evaluators. YAML is not supported.
 
 ## Detection engine
 
-26 catalogued detectors, each with id, category, control, severity, description,
+27 catalogued detectors, each with id, category, control, severity, description,
 reason, replacement policy, certainty and context requirements
 (`inspectDetectors()`). "Certainty" means a deterministic rule matched; it is not
 a probability.
@@ -153,7 +153,7 @@ a probability.
 | email | REDACT | email address |
 | usernames | REDACT | explicit username fields |
 | paths | REDACT | username inside home paths |
-| network | per profile | IPv4, IPv6 (RFC 4291 parser), MAC |
+| network | per profile | IPv4, IPv6 (RFC 4291 parser), MAC, internal hostnames (`.internal`, `.corp`, `.lan`, `.local`, `.localdomain`, `.intranet`, `.home.arpa`; REDACT except in Security incident) |
 
 Overlapping candidates are merged so a partial overlap cannot reveal a suffix;
 the strongest rule wins (`PRIVATE_KEY` outranks everything). Replacement is a
@@ -240,9 +240,9 @@ synthetic log and its report. CI never reads private logs. See [docs/CLI.md](doc
 
 ## Testing & evaluation
 
-All 24 entry points run from the repository root with Node 18+ and no install;
+All 25 entry points run from the repository root with Node 18+ and no install;
 the same set runs in GitHub Actions. Current results (Node v22.20.0, linux/x64,
-engineVersion 8), all exit 0:
+engineVersion 9), all exit 0:
 
 | Suite | Result | Suite | Result |
 | --- | --- | --- | --- |
@@ -250,14 +250,15 @@ engineVersion 8), all exit 0:
 | evals/run-evals.js (academic) | 73/73 | tests/test-parsers.js | 16/16 |
 | evals/graders/exact-property-grader.js (academic) | 91/91, 21 cases | tests/test-policies.js | 22/22 |
 | evals/run-red-team.js (academic) | 15/15 | tests/test-hook.js | PASS |
-| evals/run-ui-smoke.js (academic) | PASS | tests/test-review-ui.js | 24/24 |
+| evals/run-ui-smoke.js (academic) | PASS | tests/test-review-ui.js | 28/28 |
 | evals/run-product-behavior.js (academic) | 5/5 | tests/test-pseudonyms.js | 6/6 |
-| evals/run-accessibility-checks.js (academic, extended) | 18/18 | tests/test-detectors.js | 14/14 |
+| evals/run-accessibility-checks.js (academic, extended) | 18/18 | tests/test-detectors.js | 15/15 |
 | tests/test-static-privacy.js | 10/10 | tests/test-worker.js | 10/10 |
 | tests/test-cli.js | 9/9 | evals/run-static-privacy-checks.js | PASS |
 | evals/run-benchmarks.js | PASS, 32 cases | tests/test-regressions.js | 10/10 |
 | tests/test-properties.js | 11/11 | evals/run-corpora.js | 144/144 |
 | evals/run-red-team-extended.js | 46/46 matched | evals/run-contract-checks.js | 20/20 |
+| tests/test-contrast.js | 52/52 pairs, light + dark | | |
 
 Corpora (synthetic, `evals/corpora/`): true-positive 56/56, false-positive 22/22,
 ambiguous 9/9, adversarial 39/39 (23 detected, 16 recorded known misses),

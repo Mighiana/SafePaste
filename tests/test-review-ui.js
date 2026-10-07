@@ -482,6 +482,78 @@ test("page exit clears the raw input as well as the review", async () => {
   stale(h);
 });
 
+test("empty, clean and found states only show result chrome when it applies", async () => {
+  const h = buildHarness();
+  const e = h.elements;
+  assert.strictEqual(e.summary.getAttribute("data-state"), "empty");
+  assert(!e["output-empty"].hidden && e["review-warning"].hidden && e["preview-help"].hidden && e["findings-pager"].hidden);
+  assert(e["hide-all"].hidden && e["undo-hide"].hidden && !e["export-hint"].hidden);
+  assert(/^All \d+ rules$/.test(e["rule-catalog-summary"].textContent));
+  assert(e["rule-catalog"].textContent.includes("Internal hostname"));
+  assert.strictEqual(e["engine-version"].textContent, "Engine v" + engine.getCapabilities().engineVersion);
+  await sanitize(h, "plain text without patterns", "strict");
+  assert.strictEqual(e.summary.getAttribute("data-state"), "clean");
+  assert(e["output-empty"].hidden && !e["review-warning"].hidden && e["review-warning"].classList.contains("is-clean"));
+  assert(e["review-warning-text"].textContent.includes("Nothing detected"));
+  assert(e["export-hint"].hidden && e["sanitize-button"].classList.contains("is-done"));
+  await sanitize(h, input, "strict");
+  assert.strictEqual(e["findings-panel"].getAttribute("data-state"), "found");
+  assert(e["review-warning-text"].textContent.includes("Always check"));
+  assert(e["findings-pager"].hidden, "pager hidden for a single page");
+  await h.elements["input-text"].dispatch("input");
+  assert.strictEqual(e.summary.getAttribute("data-state"), "empty");
+  assert(e["review-warning"].hidden && !e["output-empty"].hidden);
+});
+
+test("Hide all redacts every kept value and Undo restores the earlier choices", async () => {
+  const h = buildHarness();
+  const e = h.elements;
+  await sanitize(h, input, "support");
+  assert(!e["hide-all"].hidden && !e["hide-all"].disabled);
+  assert.strictEqual(e["hide-all"].textContent, "Hide all (2 kept)");
+  assert(e["output-text"].value.includes("192.168.1.20") && e["output-text"].value.includes("127.0.0.1"));
+  const before = e["output-text"].value;
+  await e["hide-all"].dispatch("click");
+  for (const value of ["192.168.1.20", "127.0.0.1"]) assert(!e["output-text"].value.includes(value), value);
+  assert(e["hide-all"].hidden && !e["undo-hide"].hidden && e["undo-hide"].focused);
+  assert(controls(h).every(control => control.value === "REDACT"));
+  await e["undo-hide"].dispatch("click");
+  assert.strictEqual(e["output-text"].value, before);
+  assert(e["undo-hide"].hidden && !e["hide-all"].hidden);
+  await e["hide-all"].dispatch("click");
+  const one = controls(h)[0];
+  one.value = "KEEP";
+  await one.dispatch("change");
+  assert(e["undo-hide"].hidden, "a later single decision retires Undo");
+  await e["input-text"].dispatch("input");
+  assert(e["hide-all"].hidden && e["undo-hide"].hidden);
+});
+
+test("clicking a finding's line selects its replacement in the sanitized text", async () => {
+  const h = buildHarness();
+  const e = h.elements;
+  let selected = null;
+  e["output-text"].setSelectionRange = (start, end) => { selected = [start, end]; };
+  await sanitize(h, "first line\nmail=review@example.test ip=192.168.1.20 x=db.internal", "strict");
+  await e["preview-tab"].dispatch("click");
+  const links = descendants(e["findings-list"]).filter(node => node.className === "finding-where");
+  assert.strictEqual(links.length, 3);
+  for (const [index, marker] of [[0, "[REDACTED_EMAIL]"], [2, "[REDACTED_INTERNAL_HOSTNAME]"]]) {
+    await links[index].dispatch("click");
+    assert(!e["output-text"].hidden, "jump switches to the text view");
+    assert.strictEqual(e["output-text"].value.slice(selected[0], selected[1]), marker);
+    assert(e["status-message"].textContent.includes("line 2"));
+  }
+  const keep = controls(h)[0];
+  keep.value = "KEEP";
+  await keep.dispatch("change");
+  await links[2].dispatch("click");
+  assert.strictEqual(e["output-text"].value.slice(selected[0], selected[1]), "[REDACTED_INTERNAL_HOSTNAME]");
+  await links[0].dispatch("click");
+  assert.strictEqual(e["output-text"].value.slice(selected[0], selected[1]), "review@example.test");
+  assert(!e["status-message"].textContent.includes("review@example.test"));
+});
+
 (async function () {
   for (const [name, run] of tests) {
     try { await run(); passed += 1; console.log("PASS review UI: " + name); }

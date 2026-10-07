@@ -106,6 +106,26 @@ test("MAC addresses with one consistent separator", () => {
     assert.ok(!cats(text).includes("MAC_ADDRESS"), text);
   }
 });
+test("internal hostnames redact only private-use DNS suffixes, not code names, paths or public domains", () => {
+  assert.strictEqual(out("connect db01.prod.internal:5432 failed; peer=api.corp, nas.home.arpa."),
+    "connect [REDACTED_INTERNAL_HOSTNAME]:5432 failed; peer=[REDACTED_INTERNAL_HOSTNAME], [REDACTED_INTERNAL_HOSTNAME].");
+  assert.strictEqual(out("GET https://git.corp/repo from printer.local"), "GET https://[REDACTED_INTERNAL_HOSTNAME]/repo from [REDACTED_INTERNAL_HOSTNAME]");
+  assert.strictEqual(out('{"host":"cache-1.svc.cluster.local"}'), '{"host":"[REDACTED_INTERNAL_HOSTNAME]"}');
+  const keep = ["at com.acme.internal.Foo.bar", "import com.acme.internal;", "cfg /usr/local/bin ~/.local/share .env.local /srv/app.local/x",
+    "this.local = 1", "version=1.2.local", "example.com localhost corp lan", "C:\\srv\\x.lan", "db.internal-api", "a.local.example.test"];
+  for (const text of keep) assert.strictEqual(out(text), text, text);
+  assert.strictEqual(out("db.internal", { profile: "incident" }), "db.internal");
+  assert.strictEqual(legacy("db.internal"), "[REDACTED_INTERNAL_HOSTNAME]");
+  assert.strictEqual(engine.sanitize("db.internal", { redactIpAddresses: false }).sanitized, "db.internal");
+  const finding = engine.createReview("db.internal", strict).findings[0];
+  assert.strictEqual(finding.control, "network");
+  assert.strictEqual(finding.allowKeep, true);
+  const session = engine.createSession();
+  const pseudo = { profile: "strict", mode: "pseudonymization" };
+  const first = session.createReview("db.internal DB.internal web.lan", pseudo).apply().sanitized;
+  assert.strictEqual(first, "[HOST_1] [HOST_1] [HOST_2]");
+  assert.strictEqual(session.createReview(first, pseudo).apply().sanitized, first);
+});
 test("pseudonymization covers IPv6/MAC; secrets stay fully redacted; reruns are idempotent", () => {
   const session = engine.createSession();
   const options = { profile: "strict", mode: "pseudonymization" };

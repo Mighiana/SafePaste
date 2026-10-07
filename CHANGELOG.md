@@ -1,5 +1,29 @@
 # Changelog
 
+## October 2026: review polish, dark mode, internal hostnames (engineVersion 9)
+
+Added:
+- `INTERNAL_HOSTNAME` detector (catalog 27): dotted names ending in `.internal`, `.corp`,
+  `.lan`, `.local`, `.localdomain`, `.intranet` or `.home.arpa`. It is a `network`
+  identifier, gated with IPv4/IPv6/MAC, REDACT by default and KEEP only in Security incident;
+  pseudonym marker `[HOST_n]`. Code namespaces, file names in paths and versions are skipped.
+- Empty output pane lists what SafePaste catches and the full rule catalog, with a
+  "load a sample" shortcut. A clean run says "Nothing detected. Still skim it before sharing."
+- Findings: each line/column is a button that selects that replacement in the sanitized
+  text; "Hide all (n kept)" switches every Keep choice to Hide in one step, with Undo.
+- "Verify it yourself" panel (go offline, watch the Network tab, read the code). The
+  source location is plain text; the page still has no outside links.
+- Dark theme that follows `prefers-color-scheme`; engine version in the status bar.
+- `tests/test-contrast.js` (in CI) checks 26 text/background token pairs at WCAG AA
+  4.5:1 in both themes.
+
+Changed:
+- Contrast fixes: trust chips, completed steps and rule-chip counts were 3.8–4.0:1.
+- Zero counts are grey, not amber; the warning and pager only show when they apply.
+- Copy and Download sanitized.log become the primary buttons once there is output;
+  disabled buttons are dashed and the export panel says to sanitize first.
+- Settings summary reads in plain words, e.g. "Default rules · hides as [REDACTED]".
+
 ## October 2026: simpler, visual-first UI
 
 Changed (presentation only; sanitizer, policies, worker and exports unchanged):

@@ -31,7 +31,7 @@ test("markers are not rescanned and repeated apply is deterministic", function (
 test("detector catalog inspectable and immutable", function () {
   const catalog = engine.inspectDetectors();
   // Phase 7 appended 14 detectors; the original 12 remain first and unchanged in order.
-  assert.strictEqual(catalog.length, 26);
+  assert.strictEqual(catalog.length, 27);
   assert.deepStrictEqual(catalog.slice(0, 12).map(d => d.category), ["AUTHORIZATION_HEADER", "BEARER_TOKEN", "JWT", "AWS_ACCESS_KEY", "SLACK_TOKEN", "API_KEY", "SECRET", "PASSWORD", "EMAIL", "USERNAME", "PATH_OR_USERNAME", "IP_ADDRESS"]);
   catalog.forEach(d => assert(d.id && d.reason && d.contextRequirements && d.replacementPolicy && Object.isFrozen(d)));
   assert.strictEqual(catalog.find(d => d.category === "PASSWORD").allowKeep, false);
