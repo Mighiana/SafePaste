@@ -118,8 +118,8 @@ UNTRUSTED LOG ─► [ USER DEVICE: format parser ─► detection engine ─►
   cases, product red-team 15/15, UI smoke PASS, product behavior 5/5, accessibility
   static 18/18 (10 original + 8 added).
 - Extension suites: core 9/9, parsers 16/16, policies 22/22, hook PASS, review UI
-  (mocked DOM) 22/22, pseudonyms 6/6, detectors 14/14, static privacy 9/9 tests +
-  checker PASS, worker 9/9, CLI 9/9, benchmarks PASS (32 cases), regressions 10/10,
+  (mocked DOM) 24/24, pseudonyms 6/6, detectors 14/14, static privacy 10/10 tests +
+  checker PASS, worker 10/10, CLI 9/9, benchmarks PASS (32 cases), regressions 10/10,
   properties 11/11, corpora 144/144, extended red-team 46/46 matched, contract 20/20.
 - Synthetic corpora: true-positive 56/56, false-positive 22/22, ambiguous 9/9,
   adversarial 39/39 (23 detected, 16 recorded known misses), performance 18/18.

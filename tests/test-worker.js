@@ -224,6 +224,27 @@ test("preview and gutter DOM are bounded with a visible notice; exports stay com
   assert.strictEqual(gutter[gutter.length - 1], "…");
 });
 
+test("finding selectors are locked while a decision is pending, so no change is silently dropped", async () => {
+  const { kit, h } = ready();
+  await start(h, "a first@example.test b second@example.test", "strict");
+  kit.live().pump();
+  const [first, second] = require("./ui-harness").descendants(h.elements["findings-list"]).filter(node => node.tagName === "SELECT");
+  assert(first && second && !first.disabled && !second.disabled);
+  first.value = "KEEP";
+  await first.dispatch("change");
+  assert(second.disabled && first.disabled, "other selectors locked while the worker applies a decision");
+  second.value = "KEEP";
+  await second.dispatch("change");
+  assert.strictEqual(second.value, "REDACT", "a change that cannot be applied is reverted, not left showing KEEP");
+  kit.live().pump();
+  assert(!second.disabled && !first.disabled);
+  assert.strictEqual(h.elements["output-text"].value, "a first@example.test b [REDACTED_EMAIL]");
+  second.value = "KEEP";
+  await second.dispatch("change");
+  kit.live().pump();
+  assert.strictEqual(h.elements["output-text"].value, "a first@example.test b second@example.test");
+});
+
 (async function () {
   for (const [name, run] of tests) {
     try { await run(); passed += 1; console.log("PASS worker: " + name); }

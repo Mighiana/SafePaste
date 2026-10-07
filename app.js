@@ -33,6 +33,7 @@
   let workerDisabled = false;
   let reviewInWorker = false;
   let pendingJob = null;
+  let findingControls = [];
   let jobCounter = 0;
   let review = null;
   let result = null;
@@ -158,6 +159,7 @@
   function setBusy(busy) {
     cancelButton.hidden = !busy;
     cancelButton.disabled = !busy;
+    findingControls.forEach(function (control) { control.disabled = busy; });
     if (busy) {
       copy.disabled = true;
       logDownload.disabled = true;
@@ -429,6 +431,7 @@
 
   function renderFindings() {
     const list = byId("findings-list");
+    findingControls = [];
     list.replaceChildren();
     const findings = result ? result.findings : [];
     if (!findings.length) {
@@ -465,8 +468,13 @@
           control.appendChild(option);
         });
         control.value = finding.action;
+        control.disabled = Boolean(pendingJob);
+        findingControls.push(control);
         control.addEventListener("change", function () {
-          if (!currentReview()) return;
+          if (!currentReview()) {
+            if (result) control.value = overrides[finding.id] || finding.action;
+            return;
+          }
           const next = Object.assign({}, overrides);
           next[finding.id] = control.value;
           const decide = function (decidedResult) {
@@ -661,15 +669,15 @@
   function loadFile(file) {
     if (!file) return;
     if (!supportedFile(file)) {
-      invalidate("Only local text-like files are supported. Paste other content manually.");
+      status.textContent = "Only local text-like files are supported. Paste other content manually. Current input and review were kept.";
       return;
     }
     if (file.size > inputLimit()) {
-      invalidate(limitMessage("File", file.size, "bytes").replace("Nothing was truncated or analyzed.", "No file was read."));
+      status.textContent = limitMessage("File", file.size, "bytes").replace("Nothing was truncated or analyzed.", "No file was read. Current input and review were kept.");
       return;
     }
     if (typeof FileReader !== "function") {
-      invalidate("This browser cannot read local files here. Paste the log text instead.");
+      status.textContent = "This browser cannot read local files here. Paste the log text instead. Current input and review were kept.";
       return;
     }
     if (!confirmReplacement()) return;
@@ -794,7 +802,9 @@
     if (modKey && event.shiftKey && key === "c" && !copy.disabled) { event.preventDefault(); copyOutput(); }
   });
   window.addEventListener("pagehide", function () {
-    invalidate("Review ended. Sanitize again after returning; human review required.");
+    input.value = "";
+    byId("file-input").value = "";
+    invalidate("Session ended: input and review were cleared when the page was hidden. Nothing was saved.");
     session.clear();
     stopWorker();
     engineStatus();

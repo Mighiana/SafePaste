@@ -28,11 +28,17 @@ const contentTypes = {
 };
 
 function resolveRequestPath(requestUrl) {
-  const urlPath = decodeURIComponent((requestUrl || "/").split("?")[0]);
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent((requestUrl || "/").split("?")[0]);
+  } catch (error) {
+    return null;
+  }
   const relativePath = path.normalize(urlPath === "/" ? "index.html" : urlPath.replace(/^[/\\]+/, ""));
   const absolutePath = path.join(root, relativePath);
+  const fromRoot = path.relative(root, absolutePath);
 
-  if (!absolutePath.startsWith(root)) {
+  if (!fromRoot || fromRoot.split(path.sep)[0] === ".." || path.isAbsolute(fromRoot)) {
     return null;
   }
 
@@ -62,6 +68,11 @@ const server = http.createServer((request, response) => {
     response.end(data);
   });
 });
+
+if (require.main !== module) {
+  module.exports = { resolveRequestPath, root };
+  return;
+}
 
 server.listen(port, "127.0.0.1", () => {
   console.log(`SafePaste static verification server: http://127.0.0.1:${port}/`);

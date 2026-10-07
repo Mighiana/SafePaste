@@ -272,6 +272,7 @@ test("file size, text length, unsupported type and read errors fail without part
   for (const mode of ["size", "text", "type", "error"]) {
     const h = buildHarness();
     await sanitize(h, input);
+    const before = h.elements["output-text"].value;
     h.elements["file-input"].files = [{
       name: mode === "type" ? "file.bin" : "file.log",
       type: mode === "type" ? "application/octet-stream" : "text/plain",
@@ -280,7 +281,9 @@ test("file size, text length, unsupported type and read errors fail without part
     await h.elements["file-input"].dispatch("change");
     if (mode === "text") h.readers[0].complete("x".repeat(2097153));
     if (mode === "error") h.readers[0].fail();
-    stale(h);
+    // Rejected before reading: nothing replaced, so the existing review stays. After a confirmed read starts, failure clears it.
+    if (mode === "size" || mode === "type") assert.strictEqual(h.elements["output-text"].value, before);
+    else stale(h);
     assert.strictEqual(h.elements["input-text"].value, input);
     if (mode === "size" || mode === "type") assert.strictEqual(h.readers.length, 0);
   }
@@ -435,6 +438,32 @@ test("empty analysis never claims safe output; metadata report remains explicit"
   assert(h.elements["status-message"].textContent.includes("Human review required"));
   assert(h.elements["findings-list"].textContent.includes("unknown secrets"));
   assert(!/guaranteed|100%|safe to share/i.test(h.elements["status-message"].textContent));
+});
+
+test("rejected file selections keep the current input and review decisions", async () => {
+  const h = buildHarness();
+  await sanitize(h, input, "strict");
+  const select = controls(h)[0];
+  select.value = "KEEP";
+  await select.dispatch("change");
+  const kept = h.elements["output-text"].value;
+  for (const file of [{ name: "image.png", type: "image/png", size: 10 }, { name: "huge.log", type: "text/plain", size: 3 * 1024 * 1024 }]) {
+    h.elements["file-input"].files = [file];
+    await h.elements["file-input"].dispatch("change");
+    assert.strictEqual(h.readers.length, 0);
+    assert(h.elements["status-message"].textContent.includes("Current input and review were kept"));
+    assert.strictEqual(h.elements["output-text"].value, kept);
+    assert.strictEqual(h.elements["input-text"].value, input);
+    assert(!h.elements["copy-button"].disabled);
+  }
+});
+
+test("page exit clears the raw input as well as the review", async () => {
+  const h = buildHarness();
+  await sanitize(h, input, "strict");
+  await h.window.dispatch("pagehide");
+  assert.strictEqual(h.elements["input-text"].value, "");
+  stale(h);
 });
 
 (async function () {

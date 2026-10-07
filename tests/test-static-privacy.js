@@ -169,6 +169,16 @@ test("command output reports rule ids/locations only, never matched source", () 
   }
 });
 
+test("verification server refuses traversal, sibling-prefix and malformed paths", () => {
+  const { resolveRequestPath, root } = require("../evals/static-server");
+  assert.strictEqual(resolveRequestPath("/"), path.join(root, "index.html"));
+  assert.strictEqual(resolveRequestPath("/src/sanitizer.js"), path.join(root, "src", "sanitizer.js"));
+  const sibling = "/../" + path.basename(root) + "-sibling/secret.txt";
+  for (const url of ["/../etc/passwd", sibling, "/%2e%2e/" + path.basename(root) + "x/a", "/%E0%A4%A", "/.."]) {
+    assert.strictEqual(resolveRequestPath(url), null, url);
+  }
+});
+
 for (const [name, run] of tests) {
   try { run(); passed += 1; console.log("PASS static privacy: " + name); }
   catch (error) { console.error("FAIL static privacy: " + name + "\n" + error.stack); }

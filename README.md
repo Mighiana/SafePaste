@@ -239,10 +239,10 @@ engineVersion 8), all exit 0:
 | evals/run-evals.js (academic) | 73/73 | tests/test-parsers.js | 16/16 |
 | evals/graders/exact-property-grader.js (academic) | 91/91, 21 cases | tests/test-policies.js | 22/22 |
 | evals/run-red-team.js (academic) | 15/15 | tests/test-hook.js | PASS |
-| evals/run-ui-smoke.js (academic) | PASS | tests/test-review-ui.js | 22/22 |
+| evals/run-ui-smoke.js (academic) | PASS | tests/test-review-ui.js | 24/24 |
 | evals/run-product-behavior.js (academic) | 5/5 | tests/test-pseudonyms.js | 6/6 |
 | evals/run-accessibility-checks.js (academic, extended) | 18/18 | tests/test-detectors.js | 14/14 |
-| tests/test-static-privacy.js | 9/9 | tests/test-worker.js | 9/9 |
+| tests/test-static-privacy.js | 10/10 | tests/test-worker.js | 10/10 |
 | tests/test-cli.js | 9/9 | evals/run-static-privacy-checks.js | PASS |
 | evals/run-benchmarks.js | PASS, 32 cases | tests/test-regressions.js | 10/10 |
 | tests/test-properties.js | 11/11 | evals/run-corpora.js | 144/144 |

@@ -564,3 +564,20 @@ Human response
 
 Permanent control added
 -> `tests/test-worker.js`, `tests/test-cli.js` (which asserts there is no manifest), the benchmark bounds and the unchanged EV-034.
+
+### PR review findings after browser validation
+
+AI behavior
+-> In the worker path, finding selectors stayed live while a decision was pending, so a second change was dropped while the selector still displayed it. Rejected file selections (wrong type, too large) called the same invalidation as a confirmed replacement and wiped the current review. pagehide ended the review but left the raw input in the textarea for back/forward cache restoration. The local verification server checked path containment with a string prefix.
+
+Why it was problematic
+-> A selector showing KEEP or REDACT that was never applied misrepresents what Copy/download will contain. Refusing a file should not destroy work. Keeping a pasted log after the user leaves contradicts the session-only design. A prefix check could serve a sibling directory.
+
+How it was detected
+-> Automated review on PR #1, then reproduced by new tests that fail on the previous code.
+
+Human response
+-> Lock selectors while a job is pending and revert unapplied changes; report rejected files with status text only; clear the input on pagehide; use path.relative containment and refuse malformed URL encoding.
+
+Permanent control added
+-> `tests/test-worker.js` (pending-decision lock), `tests/test-review-ui.js` (rejected files keep review, page exit clears input; the existing file-failure test now distinguishes pre-read refusal from failed confirmed reads), `tests/test-static-privacy.js` (server traversal cases).

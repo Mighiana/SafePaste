@@ -1,5 +1,28 @@
 # Changelog
 
+## October 2026: review fixes (concurrent decisions, rejected files, page exit, static server)
+
+Changed:
+- Worker path: while one KEEP/REDACT decision is being applied, all finding selectors
+  are disabled, and a change that cannot be applied is reverted. Before, a second
+  change made during that wait was dropped while its selector still showed it.
+- An unsupported, oversized or unreadable-by-browser file is now refused with a status
+  message only; the current input and review decisions are kept. A read that fails
+  after the user confirmed replacement still clears the review.
+- pagehide now clears the raw input textarea as well as the review, so back/forward
+  cache restoration does not bring back a pasted log.
+- evals/static-server.js (local verification only) checked containment with a string
+  prefix, so a sibling directory whose name starts with the repo name could be served.
+  It now uses path.relative and refuses malformed URL encoding.
+
+Why:
+Found in automated PR review; each was reproduced by a new test that fails on the
+previous code.
+
+Stakeholder impact:
+Leaving the page discards the pasted log (conservative local-only choice; paste it
+again on return). No detection behavior change.
+
 ## October 2026: GitHub secret-scanning alert on a synthetic fixture
 
 Changed:

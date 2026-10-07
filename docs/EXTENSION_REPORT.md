@@ -119,11 +119,11 @@ pre-commit gate, no dependencies. Header-only limits (`frame-ancestors`) and
 | node tests/test-parsers.js | 16/16 |
 | node tests/test-policies.js | 22/22 |
 | node tests/test-hook.js | PASS |
-| node tests/test-review-ui.js | 22/22 |
+| node tests/test-review-ui.js | 24/24 |
 | node tests/test-pseudonyms.js | 6/6 |
 | node tests/test-detectors.js | 14/14 |
-| node tests/test-static-privacy.js | 9/9 |
-| node tests/test-worker.js | 9/9 |
+| node tests/test-static-privacy.js | 10/10 |
+| node tests/test-worker.js | 10/10 |
 | node tests/test-cli.js | 9/9 |
 | node evals/run-static-privacy-checks.js | PASS |
 | node evals/run-benchmarks.js | PASS, 32 cases |

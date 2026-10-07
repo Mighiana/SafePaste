@@ -33,11 +33,11 @@ All commands are dependency-free (`node <file>`), exit 0 on success and 1 on fai
 | `node tests/test-parsers.js` | extension | 16/16 |
 | `node tests/test-policies.js` | extension | 22/22 |
 | `node tests/test-hook.js` | extension | PASS |
-| `node tests/test-review-ui.js` | extension (mocked DOM) | 22/22 |
+| `node tests/test-review-ui.js` | extension (mocked DOM) | 24/24 |
 | `node tests/test-pseudonyms.js` | extension | 6/6 |
 | `node tests/test-detectors.js` | extension | 14/14 |
-| `node tests/test-static-privacy.js` | extension | 9/9 |
-| `node tests/test-worker.js` | extension (mock Worker) | 9/9 |
+| `node tests/test-static-privacy.js` | extension | 10/10 |
+| `node tests/test-worker.js` | extension (mock Worker) | 10/10 |
 | `node tests/test-cli.js` | extension | 9/9 |
 | `node evals/run-static-privacy-checks.js` | extension (static) | PASS |
 | `node evals/run-benchmarks.js` | extension | PASS, 32 cases within bounds |
