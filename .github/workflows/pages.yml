@@ -66,7 +66,7 @@ jobs:
         run: |
           mkdir -p _site/src
           cp index.html styles.css app.js _site/
-          cp src/sanitizer.js src/worker.js _site/src/
+          cp src/sanitizer.js src/worker.js src/theme.js _site/src/
           touch _site/.nojekyll
           find _site -type f | sort
       - if: steps.fresh.outputs.current == 'true'

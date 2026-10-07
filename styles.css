@@ -278,6 +278,32 @@ h1 {
   white-space: nowrap;
 }
 
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.theme-toggle {
+  display: inline-grid;
+  width: 36px;
+  min-height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0;
+}
+
+.theme-toggle .icon-sun,
+:root[data-theme="dark"] .theme-toggle .icon-moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .icon-sun {
+  display: block;
+}
+
 .workspace {
   overflow: hidden;
   border: 1px solid var(--border);
@@ -1267,8 +1293,29 @@ textarea[readonly] {
     flex-direction: column;
   }
 
-  .trust-indicators {
+  .trust-indicators,
+  .topbar-actions {
     justify-content: flex-start;
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .topbar-actions {
+    display: contents;
+  }
+
+  .topbar > .brand-lockup,
+  .theme-toggle {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .theme-toggle {
+    justify-self: end;
   }
 
   .editor-grid {
@@ -1434,63 +1481,61 @@ code {
   .rule-catalog ul { columns: 1; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #0e1520;
-    --bg-elevated: #121b28;
-    --surface: #162130;
-    --surface-secondary: #1a2637;
-    --surface-tertiary: #233247;
-    --surface-glass: rgba(22, 33, 48, 0.94);
-    --border: #2d3e54;
-    --border-strong: #4a6080;
-    --text-primary: #e7edf5;
-    --text-secondary: #c5d0dd;
-    --text-muted: #a3b2c4;
-    --text-faint: #a3b2c4;
-    --primary: #f59e0b;
-    --primary-hover: #fbbf24;
-    --primary-soft: #3a2a12;
-    --focus: #7cb3ff;
-    --link: #8ec1ff;
-    --success: #4ade80;
-    --success-strong: #86efac;
-    --success-soft: #133222;
-    --danger: #fca5a5;
-    --danger-soft: #3d1c22;
-    --warning: #fbbf24;
-    --warning-soft: #3a2f12;
-    --warning-text: #fcd34d;
-    --orange: #fb923c;
-    --cyan: #22d3ee;
-    --blue: #7cb3ff;
-    --pink: #f472b6;
-    --action: #f59e0b;
-    --action-hover: #fbbf24;
-    --on-action: #1a1206;
-    --on-badge: #0b1220;
-    --badge-low: #7cb3ff;
-    --badge-medium: #fb923c;
-    --badge-high: #fca5a5;
-    --editor-bg: #111a26;
-    --editor-readonly: #131d2b;
-    --page-top: #111a26;
-    --page-bottom: #0b111a;
-    --topbar-glass: linear-gradient(135deg, rgba(24, 35, 51, 0.96), rgba(19, 29, 43, 0.92));
-    --head-glass: linear-gradient(180deg, rgba(26, 38, 55, 0.9), rgba(22, 33, 48, 0.98));
-    --shadow: 0 20px 56px rgba(0, 0, 0, 0.4);
-  }
-
-  body::before {
-    background:
-      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-    background-size: 36px 36px;
-  }
-
-  .brand-mark { background: var(--primary-soft); }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1520;
+  --bg-elevated: #121b28;
+  --surface: #162130;
+  --surface-secondary: #1a2637;
+  --surface-tertiary: #233247;
+  --surface-glass: rgba(22, 33, 48, 0.94);
+  --border: #2d3e54;
+  --border-strong: #4a6080;
+  --text-primary: #e7edf5;
+  --text-secondary: #c5d0dd;
+  --text-muted: #a3b2c4;
+  --text-faint: #a3b2c4;
+  --primary: #f59e0b;
+  --primary-hover: #fbbf24;
+  --primary-soft: #3a2a12;
+  --focus: #7cb3ff;
+  --link: #8ec1ff;
+  --success: #4ade80;
+  --success-strong: #86efac;
+  --success-soft: #133222;
+  --danger: #fca5a5;
+  --danger-soft: #3d1c22;
+  --warning: #fbbf24;
+  --warning-soft: #3a2f12;
+  --warning-text: #fcd34d;
+  --orange: #fb923c;
+  --cyan: #22d3ee;
+  --blue: #7cb3ff;
+  --pink: #f472b6;
+  --action: #f59e0b;
+  --action-hover: #fbbf24;
+  --on-action: #1a1206;
+  --on-badge: #0b1220;
+  --badge-low: #7cb3ff;
+  --badge-medium: #fb923c;
+  --badge-high: #fca5a5;
+  --editor-bg: #111a26;
+  --editor-readonly: #131d2b;
+  --page-top: #111a26;
+  --page-bottom: #0b111a;
+  --topbar-glass: linear-gradient(135deg, rgba(24, 35, 51, 0.96), rgba(19, 29, 43, 0.92));
+  --head-glass: linear-gradient(180deg, rgba(26, 38, 55, 0.9), rgba(22, 33, 48, 0.98));
+  --shadow: 0 20px 56px rgba(0, 0, 0, 0.4);
 }
+
+:root[data-theme="dark"] body::before {
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+:root[data-theme="dark"] .brand-mark { background: var(--primary-soft); }
 
 .pane-tabs > div {
   display: flex;

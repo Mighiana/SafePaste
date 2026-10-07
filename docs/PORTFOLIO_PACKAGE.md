@@ -112,7 +112,7 @@ UNTRUSTED LOG ─► [ USER DEVICE: format parser ─► detection engine ─►
 
 ## Testing / evaluation
 
-25 entry points, all passing (exit 0):
+26 entry points, all passing (exit 0):
 
 - Academic suites: unit 38/38, evals 73/73, exact-property grader 91/91 across 21
   cases, product red-team 15/15, UI smoke PASS, product behavior 5/5, accessibility
@@ -121,7 +121,7 @@ UNTRUSTED LOG ─► [ USER DEVICE: format parser ─► detection engine ─►
   (mocked DOM) 28/28, pseudonyms 6/6, detectors 15/15, static privacy 10/10 tests +
   checker PASS, worker 10/10, CLI 9/9, benchmarks PASS (32 cases), regressions 10/10,
   properties 11/11, corpora 144/144, extended red-team 46/46 matched, contract 20/20,
-  contrast 52/52 token pairs (WCAG AA, light + dark).
+  contrast 52/52 token pairs (WCAG AA, light + dark), theme switch 4/4.
 - Synthetic corpora: true-positive 56/56, false-positive 22/22, ambiguous 9/9,
   adversarial 39/39 (23 detected, 16 recorded known misses), performance 18/18.
 
@@ -195,7 +195,8 @@ https://github.com/Mighiana/SafePaste
 
 Captured from the real running app (served by `node evals/static-server.js`) and a
 real terminal on 2026-10-07, using only the built-in synthetic samples and committed
-fixtures. Desktop screenshots are full-page at 1585 px width.
+fixtures. Desktop screenshots are full-page at 1585 px width. Captures 1–9 and the clip
+predate the light/dark switch, so their header has no theme button; capture 10 shows it.
 
 | # | Capture | File |
 | --- | --- | --- |
@@ -208,7 +209,8 @@ fixtures. Desktop screenshots are full-page at 1585 px width.
 | 7 | CLI usage (terminal) | [07-cli-usage.png](evidence/07-cli-usage.png) |
 | 8 | Evaluation / red-team results (terminal) | [08-eval-redteam-results.png](evidence/08-eval-redteam-results.png) |
 | 9 | Mobile 390 px (Security incident profile) | [09-mobile-390.png](evidence/09-mobile-390.png) |
-| 10 | 15 s muted VP9 WebM: empty state, load synthetic log (Support), sanitize, masked view, KEEP decision, click a finding to select it in the output, Hide all, report | [demo.webm](evidence/demo.webm) |
+| 10 | Dark theme, switched on with the header toggle (light system setting, web sample) | [10-dark-theme.png](evidence/10-dark-theme.png) |
+| 11 | 15 s muted VP9 WebM: empty state, load synthetic log (Support), sanitize, masked view, KEEP decision, click a finding to select it in the output, Hide all, report | [demo.webm](evidence/demo.webm) |
 
 The browser pass found two issues, fixed before capture: finding REDACT/KEEP selects
 overflowed their cards at 390 px, and the Cloud/API sample's 9-character `api_key`

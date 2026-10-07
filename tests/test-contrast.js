@@ -16,7 +16,7 @@ function block(source) {
 
 const lightStart = css.indexOf(":root {");
 const light = block(css.slice(lightStart, css.indexOf("}", lightStart)));
-const darkStart = css.indexOf(":root {", css.indexOf("@media (prefers-color-scheme: dark)"));
+const darkStart = css.indexOf(':root[data-theme="dark"] {');
 assert(darkStart > lightStart, "dark theme :root block present");
 const dark = Object.assign({}, light, block(css.slice(darkStart, css.indexOf("}", darkStart))));
 

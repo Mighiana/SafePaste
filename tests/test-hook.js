@@ -66,7 +66,7 @@ try {
   git("rm", "--cached", "--quiet", "--", "SafePaste/src/a.js");
   const app = { "index.html": fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8"),
     "app.js": "(function () { 'use strict'; })();\n", "styles.css": "body { color: #111; }\n",
-    "src/sanitizer.js": "(function () { 'use strict'; })();\n" };
+    "src/sanitizer.js": "(function () { 'use strict'; })();\n", "src/theme.js": "(function () { 'use strict'; })();\n" };
   for (const name of Object.keys(app)) {
     fs.mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
     fs.writeFileSync(path.join(directory, name), app[name]);
