@@ -99,6 +99,8 @@ test("external assets, inline code and embedding in HTML/CSS are flagged", () =>
     ["HTML_BASE", html("</head>", '<base href="./"></head>')],
     ["HTML_PREFETCH", html("</head>", '<link rel="preconnect" href="x"></head>')],
     ["HTML_JAVASCRIPT_URL", html("</body>", '<a href="javascript:void(0)">x</a></body>')],
+    ["HTML_TEXT_FIELD_AUTOCOMPLETE", html("</body>", '<textarea id="extra-log"></textarea></body>')],
+    ["HTML_TEXT_FIELD_AUTOCOMPLETE", html("</body>", '<input id="extra-field" type="text"></body>')],
     ["CSS_IMPORT", append("styles.css", "@import 'x.css';")],
     ["CSS_FONT_FACE", append("styles.css", "@font-face { font-family: X; }")],
     ["CSS_URL", append("styles.css", "body { background: url(https://example.test/a.png); }")]

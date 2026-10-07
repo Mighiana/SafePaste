@@ -170,6 +170,12 @@ function checkHtml(findings, file, source, root) {
     ["HTML_PREFETCH", /<link\b[^>]*rel\s*=\s*["']?[^"'>]*(?:preconnect|dns-prefetch|prefetch|prerender|preload|modulepreload|manifest|icon)/i],
     ["HTML_PING", /\sping\s*=/i]
   ]);
+  // Text fields can hold log text; opt them out of browser form-state restoration and autofill.
+  for (const match of source.matchAll(/<(?:textarea|input)\b[^>]*>/gi)) {
+    const type = (match[0].match(/\stype\s*=\s*["']?([a-z]+)/i) || [])[1];
+    if (/^<input/i.test(match[0]) && type && !/^(?:text|search)$/i.test(type)) continue;
+    if (!/\sautocomplete\s*=\s*["']?off["']?/i.test(match[0])) add("HTML_TEXT_FIELD_AUTOCOMPLETE", match.index);
+  }
   for (const match of source.matchAll(/\s(src|href|srcset|action|formaction|poster|data|background)\s*=\s*["']([^"']*)["']/gi)) {
     const value = match[2].trim();
     if (match[1].toLowerCase() === "href" && value.startsWith("#")) continue;
