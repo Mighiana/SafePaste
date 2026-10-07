@@ -99,17 +99,17 @@
       {
         category: "API_KEY",
         label: REDACTION_LABELS.API_KEY,
-        pattern: /((?:["']?)\b(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9._~+/=-]{12,})(\2|(?=[\r\n]|$))/gi
+        pattern: /((?:["']?)\b(?:[A-Za-z][A-Za-z0-9_.-]{0,62}_)?(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9._~+/=-]{12,})(\2|(?=[\r\n]|$))/gi
       },
       {
         category: "SECRET",
         label: REDACTION_LABELS.SECRET,
-        pattern: /((?:["']?)\bsecret\b(?:["']?)\s*[:=]\s*)(["']?)((?:[^"'\s,;}{\\]|\\[^\r\n]|\\(?![^\r\n])){3,})(\2|(?=[\r\n]|$))/gi
+        pattern: /((?:["']?)\b(?:(?:[A-Za-z][A-Za-z0-9_.-]{0,62}_)?secret|[A-Za-z][A-Za-z0-9_.-]{0,62}_(?:auth_token|refresh_token|private_key))\b(?:["']?)\s*[:=]\s*)(["']?)((?:[^"'\s,;}{\\]|\\[^\r\n]|\\(?![^\r\n])){3,})(\2|(?=[\r\n]|$))/gi
       },
       {
         category: "PASSWORD",
         label: REDACTION_LABELS.PASSWORD,
-        pattern: /((?:["']?)\b(?:password|passwd)\b(?:["']?)\s*[:=]\s*)(["']?)((?:[^"'\s,;}{\\]|\\[^\r\n]|\\(?![^\r\n])){3,})(\2|(?=[\r\n]|$))/gi
+        pattern: /((?:["']?)\b(?:[A-Za-z][A-Za-z0-9_.-]{0,62}_)?(?:password|passwd)\b(?:["']?)\s*[:=]\s*)(["']?)((?:[^"'\s,;}{\\]|\\[^\r\n]|\\(?![^\r\n])){3,})(\2|(?=[\r\n]|$))/gi
       },
       {
         category: "EMAIL",
@@ -119,7 +119,7 @@
       {
         category: "USERNAME",
         label: REDACTION_LABELS.USERNAME,
-        pattern: /((?:["']?)\b(?:username|user[_-]?name|user)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9][A-Za-z0-9._-]{2,63})(\2)(?=$|[\s,;}\]])/gi
+        pattern: /((?:["']?)\b(?:username|user[_-]?name|user)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9][A-Za-z0-9._-]{2,63})(\2)(?=$|[\s,;}\])<>(!?&|"'*])/gi
       },
       {
         category: "PATH_OR_USERNAME",
@@ -190,6 +190,7 @@
   const FORMATS = Object.freeze(["auto", "text", "json", "env", "headers", "logfmt"]);
   const MODES = Object.freeze(["redaction", "pseudonymization"]);
   const MARKER = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC)_[1-9][0-9]{0,9})\]/g;
+  const LEADING_MARKER = new RegExp("^" + MARKER.source);
 
   function existingMarker(value) {
     MARKER.lastIndex = 0;
@@ -500,7 +501,8 @@
     let format = requested;
     if (format === "auto") {
       const trimmed = source.trimStart();
-      if (/^[{[\"]/.test(trimmed)) format = "json";
+      // SafePaste's own output may start with a marker (e.g. a redacted PEM block); that is not JSON.
+      if (/^[{[\"]/.test(trimmed) && !LEADING_MARKER.test(trimmed)) format = "json";
       else {
         const lines = source.split(/\r\n|[\r\n]/).filter(function (line) { return line.trim() && !/^\s*#/.test(line); });
         if (lines.length && lines.every(function (line) { return /^(?:export[ \t]+)?[A-Za-z_][\w.-]{0,63}[ \t]*=[ \t]*(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'#]*)(?:[ \t]+#[^\r\n]*)?[ \t]*$/.test(line); })) format = "env";
@@ -569,12 +571,15 @@
       }
       const category = explicitCategory(unit.key);
       const minimum = category === "API_KEY" ? 12 : ["AUTHORIZATION_HEADER", "HEADER_CREDENTIAL", "CLOUD_CREDENTIAL"].indexOf(category) !== -1 ? 8 : 3;
-      const validIdentity = category !== "USERNAME" || /^[\p{L}\p{N}][\p{L}\p{N}\p{M}._-]{2,63}$/u.test(unit.value);
+      // A username followed by markup/punctuation (e.g. "alice</b>", "alice)") keeps only the identity part.
+      const identity = category === "USERNAME" ? /^[\p{L}\p{N}][\p{L}\p{N}\p{M}._-]{2,63}(?=$|[\])<>(!?&|"'*])/u.exec(unit.value) : null;
+      const validIdentity = category !== "USERNAME" || Boolean(identity);
+      const valueEnd = identity ? identity[0].length : unit.value.length;
       const validToken = category !== "SESSION_TOKEN" || tokenLike(unit.value);
       if (category === "COOKIE" && !unit.isKey) {
         scanCookies(unit.value, 0, /^set-/i.test(unit.key), function (start, end, name) { add(start, end, BY_CATEGORY[name]); });
       } else if (category && !existingMarker(unit.value) && validIdentity && validToken && unit.value.length >= minimum && !(parsed.format === "json" && unit.value === "null" && !unit.quoted)) {
-        add(0, unit.value.length, BY_CATEGORY[category]);
+        add(0, valueEnd, BY_CATEGORY[category]);
       }
       collect(unit.value, options).forEach(function (candidate) {
         if (candidate.detector.control === "network" && diagnosticKey(unit.key)) return;

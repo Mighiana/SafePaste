@@ -141,6 +141,19 @@ of the value. Both are needed so explicit `text` cannot leave the tail of
 Windows drive path, not an HTTP header. Explicit `text` still does not lex
 pairs, so a quoted value containing spaces is a known text-mode miss.
 
+Three further phase 11 fixes came from the property tests. (1) The text
+password/secret/API-key rules also accept the same secret-suffix keys that
+`explicitCategory` already used for parsed fields (`DB_PASSWORD`,
+`APP_SECRET`, `STRIPE_API_KEY`, `*_AUTH_TOKEN`, ...). Before this,
+`\bpassword\b` never matched after `_`, so `<!--DB_PASSWORD=...-->` in
+text-format input leaked. (2) A username value directly followed by markup or
+punctuation (`alice</b>`, `alice)`, `alice!`, `alice*/`) redacts the
+identity part instead of skipping the whole field. (3) Auto detection no longer
+sniffs input that starts with an engine marker (e.g. a redacted PEM block at
+the top of SafePaste's own output) as JSON. Previously a second pass took the
+malformed-JSON fallback and widened a header marker over later context on the
+same line.
+
 JSON parsing validates grammar and bounds nesting before detection. Escaped
 keys are recognized; decoded value characters map to original source spans
 (including Unicode escapes, escaped quotes, backslashes and surrogate units).

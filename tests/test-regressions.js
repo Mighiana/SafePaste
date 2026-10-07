@@ -62,6 +62,43 @@ test("a Windows drive path on its own line is not parsed as an HTTP header (was:
   assert.strictEqual(headers.apply().sanitized, "Host: example.test\nX-Api-Key: [REDACTED_HEADER_CREDENTIAL]");
 });
 
+test("secret-suffix keys are detected in free text, not only in parsed fields (was: leak inside markup/prose)", () => {
+  // explicitCategory() already treated DB_PASSWORD etc. as credentials in env/logfmt units, but the
+  // text rules used \bpassword\b, which never matches after "_", so text-format input leaked them.
+  for (const [input, secret] of [["<!--DB_PASSWORD=FakePwHidden1-->", "FakePwHidden1"],
+    ["run -MY_DB_PASSWORD=FakePwHidden2 ok", "FakePwHidden2"], ["<b>APP_SECRET=FakeSecretHidden3</b>", "FakeSecretHidden3"],
+    ["<b>STRIPE_API_KEY=FAKEkeyHidden4444</b>", "FAKEkeyHidden4444"], ["<i>GH_AUTH_TOKEN: FAKEtokHidden5</i>", "FAKEtokHidden5"]]) {
+    for (const format of ["auto", "text"]) hidden(input, secret, { profile: "strict", format });
+  }
+  // Unsuffixed / unrelated keys are unchanged.
+  assert.strictEqual(sanitized("<b>AUTH_TOKEN=keepme1</b>"), "<b>AUTH_TOKEN=keepme1</b>");
+  assert.strictEqual(sanitized("<b>password_hint=x1 policy</b>"), "<b>password_hint=x1 policy</b>");
+});
+
+test("a username followed by markup or punctuation is still redacted (was: full leak)", () => {
+  assert.strictEqual(sanitized("<b>username=fakeuserR1</b>"), "<b>username=[REDACTED_USERNAME]</b>");
+  assert.strictEqual(sanitized("username=fakeuserR2)"), "username=[REDACTED_USERNAME])");
+  assert.strictEqual(sanitized("level=info user=fakeuserR3!"), "level=info user=[REDACTED_USERNAME]!");
+  assert.strictEqual(sanitized("javascript:/*username=fakeuserR4*/"), "javascript:/*username=[REDACTED_USERNAME]*/");
+  assert.strictEqual(sanitized('{"username":"fakeuserR5</b>"}'), '{"username":"[REDACTED_USERNAME]</b>"}');
+  // Markers and non-identity values stay untouched.
+  assert.strictEqual(sanitized("user=[REDACTED_USERNAME]) a=1"), "user=[REDACTED_USERNAME]) a=1");
+  assert.strictEqual(sanitized("user=alice:pw x=1"), "user=alice:pw x=1");
+});
+
+test("output that starts with a marker is not re-sniffed as JSON (was: second pass swallowed context)", () => {
+  const input = "-----BEGIN PRIVATE KEY-----\nFAKEKEYSYNTHETICabc\n-----END PRIVATE KEY-----\n" +
+    "Authorization: Bearer FAKEbearerSYNTHETIC123 request_id=req-1\nlevel=info x=1";
+  const once = sanitized(input);
+  assert.strictEqual(once, "[REDACTED_PRIVATE_KEY]\nAuthorization: [REDACTED_AUTHORIZATION_HEADER] request_id=req-1\nlevel=info x=1");
+  const second = engine.createReview(once, { profile: "strict" });
+  assert.notStrictEqual(second.report.format, "json");
+  assert.strictEqual(second.apply().sanitized, once);
+  // Real JSON (and malformed JSON) is still sniffed as before.
+  assert.strictEqual(engine.createReview('["a"]').report.format, "json");
+  assert.strictEqual(engine.createReview('[INFO] password=FakeP1').report.parseStatus, "malformed-json-fallback");
+});
+
 test("new lexical paths stay bounded on pathological inputs", () => {
   const size = 1900000;
   const repeat = (unit) => unit.repeat(Math.ceil(size / unit.length)).slice(0, size);

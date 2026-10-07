@@ -1,0 +1,694 @@
+{
+  "corpus": "true_positive",
+  "description": "MUST REDACT: every listed synthetic secret must be absent from sanitized output and report metadata; listed categories (A|B = either) must appear as REDACT findings. Default options: strict profile, redaction mode, auto format.",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "id": "TP-001",
+      "topic": "credentials",
+      "title": "text password assignment",
+      "input": "login failed password=FakePass123 for request",
+      "secrets": [
+        "FakePass123"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-002",
+      "topic": "credentials",
+      "title": "passwd with colon",
+      "input": "passwd: FakePass456",
+      "secrets": [
+        "FakePass456"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-003",
+      "topic": "credentials",
+      "title": "JSON password with spaces",
+      "input": "{\"user_id\":42,\"password\":\"Fake Pass With Spaces\"}",
+      "secrets": [
+        "Fake Pass With Spaces"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-004",
+      "topic": "credentials",
+      "title": ".env DB_PASSWORD suffix",
+      "input": "DB_HOST=db.example.test\nDB_PASSWORD=FakeDbPass99",
+      "secrets": [
+        "FakeDbPass99"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-005",
+      "topic": "secrets",
+      "title": "secret assignment",
+      "input": "secret=FakeSecretValue1",
+      "secrets": [
+        "FakeSecretValue1"
+      ],
+      "categories": [
+        "SECRET"
+      ]
+    },
+    {
+      "id": "TP-006",
+      "topic": "credentials",
+      "title": "api_key field",
+      "input": "api_key=FAKEapiKEY1234567890",
+      "secrets": [
+        "FAKEapiKEY1234567890"
+      ],
+      "categories": [
+        "API_KEY"
+      ]
+    },
+    {
+      "id": "TP-007",
+      "topic": "credentials",
+      "title": "access_token JSON field",
+      "input": "{\"access_token\":\"FAKEaccessTOKEN123456\"}",
+      "secrets": [
+        "FAKEaccessTOKEN123456"
+      ],
+      "categories": [
+        "API_KEY"
+      ]
+    },
+    {
+      "id": "TP-008",
+      "topic": "credentials",
+      "title": "X-Api-Key header",
+      "input": "Host: api.example.test\nX-Api-Key: FAKEheaderKEY12345",
+      "secrets": [
+        "FAKEheaderKEY12345"
+      ],
+      "categories": [
+        "HEADER_CREDENTIAL"
+      ]
+    },
+    {
+      "id": "TP-009",
+      "topic": "tokens",
+      "title": "Authorization Bearer header",
+      "input": "Authorization: Bearer FAKEbearerTOKEN1234567890",
+      "secrets": [
+        "FAKEbearerTOKEN1234567890"
+      ],
+      "categories": []
+    },
+    {
+      "id": "TP-010",
+      "topic": "credentials",
+      "title": "Authorization Basic header",
+      "input": "Authorization: Basic ZmFrZXVzZXI6RmFrZVBhc3MxMjM=",
+      "secrets": [
+        "ZmFrZXVzZXI6RmFrZVBhc3MxMjM="
+      ],
+      "categories": []
+    },
+    {
+      "id": "TP-011",
+      "topic": "credentials",
+      "title": "Proxy-Authorization header",
+      "input": "Proxy-Authorization: Bearer FAKEproxyTOKEN123456",
+      "secrets": [
+        "FAKEproxyTOKEN123456"
+      ],
+      "categories": []
+    },
+    {
+      "id": "TP-012",
+      "topic": "credentials",
+      "title": "AWS access key id",
+      "input": "aws key AKIAFAKEEXAMPLE00001 used",
+      "secrets": [
+        "AKIAFAKEEXAMPLE00001"
+      ],
+      "categories": [
+        "AWS_ACCESS_KEY"
+      ]
+    },
+    {
+      "id": "TP-013",
+      "topic": "credentials",
+      "title": "AWS secret access key field",
+      "input": "aws_secret_access_key=FAKEsecretEXAMPLEkey0000000000000000TEST",
+      "secrets": [
+        "FAKEsecretEXAMPLEkey0000000000000000TEST"
+      ],
+      "categories": [
+        "CLOUD_CREDENTIAL"
+      ]
+    },
+    {
+      "id": "TP-014",
+      "topic": "tokens",
+      "title": "Slack bot token",
+      "input": "slack=xoxb-SYNTHETIC-TEST-ONLY-0000000000",
+      "secrets": [
+        "xoxb-SYNTHETIC-TEST-ONLY-0000000000"
+      ],
+      "categories": [
+        "SLACK_TOKEN"
+      ]
+    },
+    {
+      "id": "TP-015",
+      "topic": "tokens",
+      "title": "GitHub classic token",
+      "input": "token ghp_FAKE0000000000000000000000000000TEST rejected",
+      "secrets": [
+        "ghp_FAKE0000000000000000000000000000TEST"
+      ],
+      "categories": [
+        "GITHUB_TOKEN"
+      ]
+    },
+    {
+      "id": "TP-016",
+      "topic": "tokens",
+      "title": "GitHub fine-grained token",
+      "input": "pat github_pat_FAKE000000000000000000_EXAMPLE0000000000000000000000000000000000000000000000000000",
+      "secrets": [
+        "github_pat_FAKE000000000000000000_EXAMPLE0000000000000000000000000000000000000000000000000000"
+      ],
+      "categories": [
+        "GITHUB_TOKEN"
+      ]
+    },
+    {
+      "id": "TP-017",
+      "topic": "credentials",
+      "title": "Google API key",
+      "input": "key=AIzaFAKE_TEST_xxxxxxxxxxxxxxxxxxxxxxxxx",
+      "secrets": [
+        "AIzaFAKE_TEST_xxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "categories": [
+        "GOOGLE_API_KEY"
+      ]
+    },
+    {
+      "id": "TP-018",
+      "topic": "tokens",
+      "title": "JWT in prose",
+      "input": "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJGQUtFLVRFU1QifQ.FAKEsignatureTEST0001 expired",
+      "secrets": [
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJGQUtFLVRFU1QifQ.FAKEsignatureTEST0001",
+        "FAKEsignatureTEST0001"
+      ],
+      "categories": [
+        "JWT"
+      ]
+    },
+    {
+      "id": "TP-019",
+      "topic": "credentials",
+      "title": "postgres URL credentials",
+      "input": "DATABASE_URL=postgres://app:FakeDbUrlPass@db.example.test:5432/app",
+      "secrets": [
+        "FakeDbUrlPass"
+      ],
+      "categories": [
+        "URL_CREDENTIALS"
+      ]
+    },
+    {
+      "id": "TP-020",
+      "topic": "credentials",
+      "title": "redis URL with empty user",
+      "input": "redis://:FakeRedisPass@cache.example.test:6379/0",
+      "secrets": [
+        "FakeRedisPass"
+      ],
+      "categories": [
+        "URL_CREDENTIALS"
+      ]
+    },
+    {
+      "id": "TP-021",
+      "topic": "credentials",
+      "title": "ADO.NET connection string",
+      "input": "Server=db.example.test;Database=app;User Id=svc_fake;Password=FakeAdoPass1;",
+      "secrets": [
+        "FakeAdoPass1"
+      ],
+      "categories": [
+        "CONNECTION_STRING_PASSWORD|PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-022",
+      "topic": "credentials",
+      "title": "JDBC SQL Server password",
+      "input": "jdbc:sqlserver://db.example.test:1433;databaseName=app;user=svc;password=FakeJdbcPass1",
+      "secrets": [
+        "FakeJdbcPass1"
+      ],
+      "categories": [
+        "CONNECTION_STRING_PASSWORD|PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-023",
+      "topic": "credentials",
+      "title": "JDBC Oracle thin credentials",
+      "input": "jdbc:oracle:thin:scott/FakeOraclePass@db.example.test:1521:XE",
+      "secrets": [
+        "FakeOraclePass"
+      ],
+      "categories": [
+        "CONNECTION_STRING_PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-024",
+      "topic": "credentials",
+      "title": "Azure storage AccountKey",
+      "input": "DefaultEndpointsProtocol=https;AccountName=fakeacct;AccountKey=FAKEazureKEY0000TEST==;EndpointSuffix=core.windows.net",
+      "secrets": [
+        "FAKEazureKEY0000TEST=="
+      ],
+      "categories": [
+        "CLOUD_CREDENTIAL"
+      ]
+    },
+    {
+      "id": "TP-025",
+      "topic": "tokens",
+      "title": "Cookie header session value",
+      "input": "Cookie: theme=dark; sessionid=FAKEcookieSESSION123",
+      "secrets": [
+        "FAKEcookieSESSION123"
+      ],
+      "categories": [
+        "COOKIE_VALUE"
+      ]
+    },
+    {
+      "id": "TP-026",
+      "topic": "tokens",
+      "title": "Set-Cookie value",
+      "input": "Set-Cookie: sid=FAKEsetCOOKIE12345; Path=/; HttpOnly",
+      "secrets": [
+        "FAKEsetCOOKIE12345"
+      ],
+      "categories": [
+        "COOKIE_VALUE"
+      ]
+    },
+    {
+      "id": "TP-027",
+      "topic": "tokens",
+      "title": "session_id JSON field",
+      "input": "{\"session_id\":\"FAKEsess1234567890\"}",
+      "secrets": [
+        "FAKEsess1234567890"
+      ],
+      "categories": [
+        "SESSION_TOKEN"
+      ]
+    },
+    {
+      "id": "TP-028",
+      "topic": "secrets",
+      "title": "RSA private key block",
+      "input": "before\n-----BEGIN RSA PRIVATE KEY-----\nFAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000\nSYNTHETICkeyBODYexample111111111111111111111111111111111111111\n-----END RSA PRIVATE KEY-----\nafter",
+      "secrets": [
+        "FAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000",
+        "SYNTHETICkeyBODYexample111111111111111111111111111111111111111"
+      ],
+      "categories": [
+        "PRIVATE_KEY"
+      ]
+    },
+    {
+      "id": "TP-029",
+      "topic": "secrets",
+      "title": "OpenSSH private key block",
+      "input": "-----BEGIN OPENSSH PRIVATE KEY-----\nFAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000\nSYNTHETICkeyBODYexample111111111111111111111111111111111111111\n-----END OPENSSH PRIVATE KEY-----",
+      "secrets": [
+        "FAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000",
+        "SYNTHETICkeyBODYexample111111111111111111111111111111111111111"
+      ],
+      "categories": [
+        "PRIVATE_KEY"
+      ]
+    },
+    {
+      "id": "TP-030",
+      "topic": "secrets",
+      "title": "PKCS8 key inside JSON string",
+      "input": "{\"key\":\"-----BEGIN PRIVATE KEY-----\\nFAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000\\nSYNTHETICkeyBODYexample111111111111111111111111111111111111111\\n-----END PRIVATE KEY-----\",\"ok\":true}",
+      "secrets": [
+        "FAKEKEYMATERIALTESTONLY0000000000000000000000000000000000000000",
+        "SYNTHETICkeyBODYexample111111111111111111111111111111111111111"
+      ],
+      "categories": [
+        "PRIVATE_KEY"
+      ]
+    },
+    {
+      "id": "TP-031",
+      "topic": "tokens",
+      "title": "Slack webhook URL",
+      "input": "hook=https://hooks.slack.com/services/TFAKE0000/BFAKE0000/FAKEwebhookSECRET0000",
+      "secrets": [
+        "FAKEwebhookSECRET0000"
+      ],
+      "categories": [
+        "WEBHOOK_SECRET"
+      ]
+    },
+    {
+      "id": "TP-032",
+      "topic": "tokens",
+      "title": "token query parameter",
+      "input": "GET https://api.example.test/v1/items?token=FAKEqueryTOKEN99&page=2",
+      "secrets": [
+        "FAKEqueryTOKEN99"
+      ],
+      "categories": [
+        "URL_QUERY_SECRET"
+      ]
+    },
+    {
+      "id": "TP-033",
+      "topic": "email",
+      "title": "email in prose",
+      "input": "contact alice.fake@example.test about ticket",
+      "secrets": [
+        "alice.fake@example.test"
+      ],
+      "categories": [
+        "EMAIL"
+      ]
+    },
+    {
+      "id": "TP-034",
+      "topic": "usernames",
+      "title": "username field",
+      "input": "username=alice_fake action=login",
+      "secrets": [
+        "alice_fake"
+      ],
+      "categories": [
+        "USERNAME"
+      ]
+    },
+    {
+      "id": "TP-035",
+      "topic": "paths",
+      "title": "Linux home path",
+      "input": "open /home/fakeuser/.ssh/config failed",
+      "secrets": [
+        "fakeuser"
+      ],
+      "categories": [
+        "PATH_OR_USERNAME"
+      ]
+    },
+    {
+      "id": "TP-036",
+      "topic": "paths",
+      "title": "macOS home path",
+      "input": "cwd=/Users/fakebob/projects",
+      "secrets": [
+        "fakebob"
+      ],
+      "categories": [
+        "PATH_OR_USERNAME"
+      ]
+    },
+    {
+      "id": "TP-037",
+      "topic": "paths",
+      "title": "Windows profile path line",
+      "input": "C:\\Users\\fakecarol\\AppData\\Local\\app.log",
+      "secrets": [
+        "fakecarol"
+      ],
+      "categories": [
+        "PATH_OR_USERNAME"
+      ]
+    },
+    {
+      "id": "TP-038",
+      "topic": "network",
+      "title": "public documentation IPv4 under strict",
+      "input": "client 203.0.113.42 connected",
+      "secrets": [
+        "203.0.113.42"
+      ],
+      "categories": [
+        "IP_ADDRESS"
+      ]
+    },
+    {
+      "id": "TP-039",
+      "topic": "network",
+      "title": "private IPv4 under strict",
+      "input": "client_ip=192.168.1.20",
+      "secrets": [
+        "192.168.1.20"
+      ],
+      "categories": [
+        "IP_ADDRESS"
+      ]
+    },
+    {
+      "id": "TP-040",
+      "topic": "network",
+      "title": "global IPv6",
+      "input": "peer 2001:db8:85a3::8a2e:370:7334 reset",
+      "secrets": [
+        "2001:db8:85a3::8a2e:370:7334"
+      ],
+      "categories": [
+        "IPV6_ADDRESS"
+      ]
+    },
+    {
+      "id": "TP-041",
+      "topic": "network",
+      "title": "link-local IPv6 with zone in URL",
+      "input": "GET http://[fe80::1%eth0]:8080/health",
+      "secrets": [
+        "fe80::1%eth0"
+      ],
+      "categories": [
+        "IPV6_ADDRESS"
+      ]
+    },
+    {
+      "id": "TP-042",
+      "topic": "network",
+      "title": "IPv4-mapped IPv6",
+      "input": "src ::ffff:192.0.2.128 denied",
+      "secrets": [
+        "192.0.2.128"
+      ],
+      "categories": []
+    },
+    {
+      "id": "TP-043",
+      "topic": "network",
+      "title": "MAC colon notation",
+      "input": "mac=00:1a:2b:3c:4d:5e",
+      "secrets": [
+        "00:1a:2b:3c:4d:5e"
+      ],
+      "categories": [
+        "MAC_ADDRESS"
+      ]
+    },
+    {
+      "id": "TP-044",
+      "topic": "network",
+      "title": "MAC hyphen notation",
+      "input": "adapter 00-1A-2B-3C-4D-5F up",
+      "secrets": [
+        "00-1A-2B-3C-4D-5F"
+      ],
+      "categories": [
+        "MAC_ADDRESS"
+      ]
+    },
+    {
+      "id": "TP-045",
+      "topic": "credentials",
+      "title": "JSON escaped password key",
+      "input": "{\"pass\\u0077ord\":\"FakeEscapedKey1\"}",
+      "secrets": [
+        "FakeEscapedKey1"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-046",
+      "topic": "credentials",
+      "title": "NDJSON lines with spaced values",
+      "input": "{\"password\":\"Fake Nd Json 1\"}\n{\"password\":\"Fake Nd Json 2\"}",
+      "secrets": [
+        "Fake Nd Json 1",
+        "Fake Nd Json 2"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-047",
+      "topic": "credentials",
+      "title": "truncated line with unterminated quote",
+      "input": "level=warn password=\"FakeTruncated77",
+      "secrets": [
+        "FakeTruncated77"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-048",
+      "topic": "credentials",
+      "title": "escaped quote inside quoted value",
+      "input": "password=\"FakeA\\\"FakeTail\"",
+      "secrets": [
+        "FakeTail"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-049",
+      "topic": "credentials",
+      "title": "JSON number password",
+      "input": "{\"password\":12345678}",
+      "secrets": [
+        "12345678"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-050",
+      "topic": "credentials",
+      "title": "logfmt mixed case key",
+      "input": "level=error PassWord=FakeMixedCase1 msg=\"auth\"",
+      "secrets": [
+        "FakeMixedCase1"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-051",
+      "topic": "email",
+      "title": "email inside hostile markup",
+      "input": "<img src=x onerror=alert(1)> mail <b>evil.fake@example.test</b>",
+      "secrets": [
+        "evil.fake@example.test"
+      ],
+      "categories": [
+        "EMAIL"
+      ]
+    },
+    {
+      "id": "TP-052",
+      "topic": "credentials",
+      "title": "header block via explicit headers format",
+      "input": "Accept: */*\nX-Auth-Token: FAKEauthHEADER9999",
+      "options": {
+        "profile": "strict",
+        "format": "headers"
+      },
+      "secrets": [
+        "FAKEauthHEADER9999"
+      ],
+      "categories": [
+        "HEADER_CREDENTIAL"
+      ]
+    },
+    {
+      "id": "TP-053",
+      "topic": "credentials",
+      "title": "secret-suffix key inside an HTML comment (text format)",
+      "input": "<p>deploy</p>\n<!--DB_PASSWORD=FakeTp053Pw-->",
+      "options": {
+        "profile": "strict"
+      },
+      "secrets": [
+        "FakeTp053Pw"
+      ],
+      "categories": [
+        "PASSWORD"
+      ]
+    },
+    {
+      "id": "TP-054",
+      "topic": "tokens",
+      "title": "suffixed API key and auth token in markup",
+      "input": "<b>STRIPE_API_KEY=FAKEtp054key000000</b> <i>GH_AUTH_TOKEN: FAKEtp054tok</i>",
+      "options": {
+        "profile": "strict"
+      },
+      "secrets": [
+        "FAKEtp054key000000",
+        "FAKEtp054tok"
+      ],
+      "categories": [
+        "API_KEY",
+        "SECRET"
+      ]
+    },
+    {
+      "id": "TP-055",
+      "topic": "identity",
+      "title": "username directly followed by a closing tag",
+      "input": "<td>username=faketp055user</td>",
+      "options": {
+        "profile": "strict"
+      },
+      "secrets": [
+        "faketp055user"
+      ],
+      "categories": [
+        "USERNAME"
+      ]
+    },
+    {
+      "id": "TP-056",
+      "topic": "identity",
+      "title": "logfmt username with trailing punctuation",
+      "input": "level=warn user=faketp056user! retry=1",
+      "options": {
+        "profile": "strict"
+      },
+      "secrets": [
+        "faketp056user"
+      ],
+      "categories": [
+        "USERNAME"
+      ]
+    }
+  ]
+}
