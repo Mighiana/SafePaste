@@ -496,13 +496,16 @@ test("empty, clean and found states only show result chrome when it applies", as
   assert(e["output-empty"].hidden && !e["review-warning"].hidden && e["review-warning"].classList.contains("is-clean"));
   assert(e["review-warning-text"].textContent.includes("Nothing detected"));
   assert(e["export-hint"].hidden && e["sanitize-button"].classList.contains("is-done"));
+  assert(!e["copy-button"].disabled && e["copy-button"].title === "", "enabled Copy has no stale instruction");
   await sanitize(h, input, "strict");
   assert.strictEqual(e["findings-panel"].getAttribute("data-state"), "found");
+  assert(!e["copy-button"].disabled && e["copy-button"].title === "");
   assert(e["review-warning-text"].textContent.includes("Always check"));
   assert(e["findings-pager"].hidden, "pager hidden for a single page");
   await h.elements["input-text"].dispatch("input");
   assert.strictEqual(e.summary.getAttribute("data-state"), "empty");
   assert(e["review-warning"].hidden && !e["output-empty"].hidden);
+  assert(e["copy-button"].disabled && e["copy-button"].title === "Sanitize first");
 });
 
 test("Hide all redacts every kept value and Undo restores the earlier choices", async () => {

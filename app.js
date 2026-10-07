@@ -169,16 +169,22 @@
     findingControls.forEach(function (control) { control.disabled = busy; });
     renderBulk();
     if (busy) {
-      copy.disabled = true;
-      logDownload.disabled = true;
-      reportDownload.disabled = true;
+      disableExports("Wait for the current run to finish");
     }
+  }
+
+  function disableExports(reason) {
+    copy.disabled = true;
+    logDownload.disabled = true;
+    reportDownload.disabled = true;
+    copy.title = reason;
   }
 
   function enableExports() {
     copy.disabled = !result.sanitized.length;
     logDownload.disabled = !result.sanitized.length;
     reportDownload.disabled = false;
+    copy.title = copy.disabled ? "Nothing to copy" : "";
   }
 
   function startWorker(assumeReady) {
@@ -309,7 +315,6 @@
     byId("review-warning-text").textContent = state === "clean"
       ? "Nothing detected. Still skim it before sharing."
       : "Always check before sharing. Unknown secrets can slip through.";
-    copy.title = copy.disabled ? "Sanitize first" : "";
   }
 
   function keptFindings() {
@@ -661,9 +666,7 @@
     page = 0;
     resetCopy();
     revokeDownloads();
-    copy.disabled = true;
-    logDownload.disabled = true;
-    reportDownload.disabled = true;
+    disableExports("Sanitize first");
     renderPreview();
     renderCategories([]);
     renderReport();

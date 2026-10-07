@@ -111,6 +111,13 @@ test("internal hostnames redact only private-use DNS suffixes, not code names, p
     "connect [REDACTED_INTERNAL_HOSTNAME]:5432 failed; peer=[REDACTED_INTERNAL_HOSTNAME], [REDACTED_INTERNAL_HOSTNAME].");
   assert.strictEqual(out("GET https://git.corp/repo from printer.local"), "GET https://[REDACTED_INTERNAL_HOSTNAME]/repo from [REDACTED_INTERNAL_HOSTNAME]");
   assert.strictEqual(out('{"host":"cache-1.svc.cluster.local"}'), '{"host":"[REDACTED_INTERNAL_HOSTNAME]"}');
+  // Host positions win over the code-name filters: headers, host keys, UNC shares, URLs and user@host.
+  assert.strictEqual(out("Host: com.internal"), "Host: [REDACTED_INTERNAL_HOSTNAME]");
+  assert.strictEqual(out("see com.internal"), "see [REDACTED_INTERNAL_HOSTNAME]");
+  assert.strictEqual(out("Host: this.local"), "Host: [REDACTED_INTERNAL_HOSTNAME]");
+  assert.strictEqual(out('{"db_host":"com.acme.internal"}'), '{"db_host":"[REDACTED_INTERNAL_HOSTNAME]"}');
+  assert.strictEqual(out("copy \\\\fileserver.corp\\share\\a.txt"), "copy \\\\[REDACTED_INTERNAL_HOSTNAME]\\share\\a.txt");
+  assert.strictEqual(out("url=//org.acme.corp/x"), "url=//[REDACTED_INTERNAL_HOSTNAME]/x");
   const keep = ["at com.acme.internal.Foo.bar", "import com.acme.internal;", "cfg /usr/local/bin ~/.local/share .env.local /srv/app.local/x",
     "this.local = 1", "version=1.2.local", "example.com localhost corp lan", "C:\\srv\\x.lan", "db.internal-api", "a.local.example.test"];
   for (const text of keep) assert.strictEqual(out(text), text, text);
