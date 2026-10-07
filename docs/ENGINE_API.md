@@ -77,7 +77,7 @@ markers). All use bounded scanners/validators, never entropy guessing. Overlaps 
 merged by priority: `PRIVATE_KEY` (120) outranks everything, so secrets inside a
 key block produce one finding/replacement. Credentials/tokens/secrets stay locked
 (REDACT only, never pseudonymized); IPv6/MAC are `network` review identifiers.
-Report `engineVersion` is 7.
+Report `engineVersion` was 7 for phase 7; it is 8 since the phase 11 fixes below.
 
 | Category | Exact rule | Marker |
 |---|---|---|
@@ -125,7 +125,21 @@ host stays readable. Prefixed tokens are length-checked only; no checksum valida
 lines, header lines, then mixed key=value logs. Explicit `env` handles unquoted
 values with spaces. Ambiguous mixed prose defaults to narrow token scanning,
 not semantic inference. Explicit `text` uses only the original text detectors.
-YAML, NDJSON, and general embedded JSON extraction are not implemented.
+YAML and general embedded JSON *structure* parsing are not implemented. Since
+phase 11 (engineVersion 8), every non-`text` format, including the
+malformed-JSON fallback, also lexes JSON-style `"key":"value"` pairs embedded in
+log lines, NDJSON or truncated JSON. Their values are decoded with JSON escapes
+so that spaces and escaped quotes cannot split a credential. Pair units feed the
+same `explicitCategory` and detector scan as other fields and count toward
+`maxFields`. Under an explicit credential/identity key, an unterminated quoted
+value (`password="...`, a truncated line) or an invalid JSON string
+conservatively covers the rest of its line. Under other keys it is skipped and
+later fields still parse. The text rules for password/passwd/secret/API keys also
+accept an end-of-line close for an opened quote and treat backslash escapes as part
+of the value. Both are needed so explicit `text` cannot leave the tail of
+`"Fake\"Tail"` visible. A one-letter key followed by `:\` or `:/` is a
+Windows drive path, not an HTTP header. Explicit `text` still does not lex
+pairs, so a quoted value containing spaces is a known text-mode miss.
 
 JSON parsing validates grammar and bounds nesting before detection. Escaped
 keys are recognized; decoded value characters map to original source spans

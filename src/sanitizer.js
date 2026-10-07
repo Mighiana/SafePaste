@@ -99,17 +99,17 @@
       {
         category: "API_KEY",
         label: REDACTION_LABELS.API_KEY,
-        pattern: /((?:["']?)\b(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9._~+/=-]{12,})(\2)/gi
+        pattern: /((?:["']?)\b(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9._~+/=-]{12,})(\2|(?=[\r\n]|$))/gi
       },
       {
         category: "SECRET",
         label: REDACTION_LABELS.SECRET,
-        pattern: /((?:["']?)\bsecret\b(?:["']?)\s*[:=]\s*)(["']?)([^"'\s,;}{]{3,})(\2)/gi
+        pattern: /((?:["']?)\bsecret\b(?:["']?)\s*[:=]\s*)(["']?)((?:[^"'\s,;}{\\]|\\[^\r\n]|\\(?![^\r\n])){3,})(\2|(?=[\r\n]|$))/gi
       },
       {
         category: "PASSWORD",
         label: REDACTION_LABELS.PASSWORD,
-        pattern: /((?:["']?)\b(?:password|passwd)\b(?:["']?)\s*[:=]\s*)(["']?)([^"'\s,;}{]{3,})(\2)/gi
+        pattern: /((?:["']?)\b(?:password|passwd)\b(?:["']?)\s*[:=]\s*)(["']?)((?:[^"'\s,;}{\\]|\\[^\r\n]|\\(?![^\r\n])){3,})(\2|(?=[\r\n]|$))/gi
       },
       {
         category: "EMAIL",
@@ -420,10 +420,16 @@
       let match;
       while ((match = pattern.exec(source)) !== null) {
         const start = pattern.lastIndex;
+        // A one-letter "header" followed by a slash is a Windows drive path (C:\Users\...), not a header.
+        if (header && match[1].length === 1 && source[start - 1] === ":" && /[\\/]/.test(source[start] || "")) continue;
         let unit;
         if (!header && (source[start] === '"' || source[start] === "'")) {
           try { unit = readQuoted(source, start, false); }
-          catch (error) { if (error.code !== "FIELD_SYNTAX") throw error; continue; }
+          catch (error) {
+            if (error.code !== "FIELD_SYNTAX") throw error;
+            unit = unterminated(source, start, match[1]);
+            if (!unit) continue;
+          }
           pattern.lastIndex = unit.next;
         } else {
           let end = start;
@@ -442,12 +448,51 @@
     if (format !== "headers") scan(assignments, false);
     if (format !== "env" && format !== "logfmt") scan(headers, true);
     units.sort(function (a, b) { return a.start - b.start || b.end - a.end; });
+    return nonOverlapping(units);
+  }
+
+  function nonOverlapping(units) {
     let coveredEnd = -1;
     return units.filter(function (unit) {
       if (unit.start < coveredEnd) return false;
       coveredEnd = unit.end;
       return true;
     });
+  }
+
+  // An unterminated quoted value (e.g. a truncated log line) under an explicit credential or identity
+  // key conservatively covers the rest of its line; other keys are skipped as before.
+  function unterminated(source, quote, key) {
+    if (!explicitCategory(key)) return null;
+    let end = quote + 1;
+    while (end < source.length && source[end] !== "\n" && source[end] !== "\r") end += 1;
+    return { start: quote + 1, end: end, next: end, value: source.slice(quote + 1, end), quoted: false };
+  }
+
+  // JSON-style "key":"value" pairs embedded in non-JSON input (log lines, NDJSON, truncated JSON).
+  // Values are decoded with JSON escapes so escaped quotes and spaces cannot split a credential;
+  // an unterminated or invalid string under an explicit key extends to the end of its line.
+  function parseJsonPairs(source, limits, used) {
+    const pairs = [];
+    const pattern = /"((?:[^"\\\r\n]|\\[^\r\n]){1,128})"[ \t]*:[ \t]*"/g;
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+      let key;
+      try { key = readQuoted(source, match.index, true).value; }
+      catch (error) { if (error.code !== "JSON_SYNTAX") throw error; pattern.lastIndex = match.index + 1; continue; }
+      const quote = pattern.lastIndex - 1;
+      let unit;
+      try { unit = readQuoted(source, quote, true); }
+      catch (error) {
+        if (error.code !== "JSON_SYNTAX") throw error;
+        unit = unterminated(source, quote, key);
+        if (!unit) { pattern.lastIndex = quote + 1; continue; }
+      }
+      if (used + pairs.length >= limits.maxFields) fail("FIELD_LIMIT");
+      unit.key = key; pairs.push(unit);
+      pattern.lastIndex = unit.next;
+    }
+    return nonOverlapping(pairs);
   }
 
   function parseInput(source, requested, limits) {
@@ -459,20 +504,23 @@
       else {
         const lines = source.split(/\r\n|[\r\n]/).filter(function (line) { return line.trim() && !/^\s*#/.test(line); });
         if (lines.length && lines.every(function (line) { return /^(?:export[ \t]+)?[A-Za-z_][\w.-]{0,63}[ \t]*=[ \t]*(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'#]*)(?:[ \t]+#[^\r\n]*)?[ \t]*$/.test(line); })) format = "env";
-        else if (lines.length && lines.every(function (line) { return /^[A-Za-z][\w-]{0,63}[ \t]*:/.test(line); })) format = "headers";
+        else if (lines.length && lines.every(function (line) { return /^(?![A-Za-z]:[\\/])[A-Za-z][\w-]{0,63}[ \t]*:/.test(line); })) format = "headers";
         else if (/(?:^|\s)[A-Za-z_][\w.-]{0,63}[ \t]*=/.test(source)) format = "logfmt";
         else format = "text";
       }
     }
     if (format === "json") {
-      try { return { format: format, status: "parsed", units: parseJson(source, limits) }; }
+      try { return { format: format, status: "parsed", units: parseJson(source, limits), pairs: [] }; }
       catch (error) {
         if (error.code !== "JSON_SYNTAX") throw error;
-        return { format: "text", status: "malformed-json-fallback", units: parseFields(source, "text", limits) };
+        const fallback = parseFields(source, "text", limits);
+        return { format: "text", status: "malformed-json-fallback", units: fallback,
+          pairs: parseJsonPairs(source, limits, fallback.length) };
       }
     }
-    return { format: format, status: format === "text" ? "text" : "parsed",
-      units: requested === "text" ? [] : parseFields(source, format, limits) };
+    const units = requested === "text" ? [] : parseFields(source, format, limits);
+    return { format: format, status: format === "text" ? "text" : "parsed", units: units,
+      pairs: requested === "text" ? [] : parseJsonPairs(source, limits, units.length) };
   }
 
   function explicitCategory(key) {
@@ -499,8 +547,7 @@
   }
 
   function collectParsed(source, options, parsed) {
-    const units = parsed.units;
-    function overlapsUnit(candidate) {
+    function within(units, candidate) {
       let low = 0; let high = units.length;
       while (low < high) {
         const middle = Math.floor((low + high) / 2);
@@ -509,9 +556,10 @@
       }
       return low < units.length && units[low].start <= candidate.start && units[low].end >= candidate.end;
     }
+    function overlapsUnit(candidate) { return within(parsed.units, candidate) || within(parsed.pairs, candidate); }
     // Context-dependent detectors (chains, cookies, URLs, blocks) keep source-level matches; overlaps merge later.
     const candidates = parsed.format === "json" ? [] : collect(source, options).filter(function (candidate) { return candidate.contextual || !overlapsUnit(candidate); });
-    units.forEach(function (unit) {
+    parsed.units.concat(parsed.pairs).forEach(function (unit) {
       function add(start, end, detector, networkKind, value) {
         if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
         candidates.push({ start: unit.starts ? unit.starts[start] : unit.start + start,
@@ -966,7 +1014,7 @@
     const candidates = resolve(collectParsed(source, detectionOptions, parsed));
     if (policy.mode === "pseudonymization") {
       pseudonyms.reserve(source);
-      parsed.units.forEach(function (unit) { pseudonyms.reserve(unit.value); });
+      parsed.units.concat(parsed.pairs).forEach(function (unit) { pseudonyms.reserve(unit.value); });
       candidates.forEach(function (candidate) {
         if (!candidate.detector.allowKeep) return;
         candidate.replacement = pseudonyms.marker(candidate.detector.category,
@@ -988,7 +1036,7 @@
       else count.kept += 1;
     });
     CONTROLS.forEach(function (control) { Object.freeze(counts[control]); });
-    return Object.freeze({ engineVersion: 7, profile: policy.name, mode: policy.mode, policy: policy,
+    return Object.freeze({ engineVersion: 8, profile: policy.name, mode: policy.mode, policy: policy,
       format: analysis.format, parseStatus: analysis.parseStatus,
       inputLength: length, inputLines: analysis.inputLines, totalFindings: findings.length,
       redacted: redacted, kept: findings.length - redacted,
