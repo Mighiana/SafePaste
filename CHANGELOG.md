@@ -12,10 +12,12 @@ Changed (presentation only; sanitizer, policies, worker and exports unchanged):
 - Category counts are pill chips with a coloured count; one amber "always check before
   sharing" warning replaces several review paragraphs.
 - Findings are colour-coded cards (severity badge, category, line/column, replacement);
-  rule ids and reasons moved to a hover title. Locked findings show "Always hidden".
+  the rule id, reason and policy reason sit behind a per-finding "Why?" toggle.
+  Locked findings show "Always hidden".
 - The text privacy report is under a collapsed "Report details"; downloads are unchanged.
-- Evidence screenshots 01–06 and 09 were recaptured with the new layout; `demo.webm`
-  still shows the previous layout.
+- The step bar returns from Copy to Check when a KEEP/REDACT change or a new analysis
+  replaces the output that was copied.
+- Evidence screenshots 01–06 and 09 and `demo.webm` were recaptured with the new layout.
 
 ## October 2026: GitHub Pages demo
 

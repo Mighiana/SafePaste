@@ -373,7 +373,6 @@ h3 {
 .flow-steps[data-stage="paste"] [data-step="paste"],
 .flow-steps[data-stage="sanitize"] [data-step="sanitize"],
 .flow-steps[data-stage="review"] [data-step="review"],
-.flow-steps[data-stage="review"] [data-step="copy"],
 .flow-steps[data-stage="copy"] [data-step="copy"] {
   border-color: var(--primary);
   background: var(--primary-soft);
@@ -777,6 +776,9 @@ summary { cursor: pointer; font-weight: 700; }
 .finding-where { color: var(--text-muted); font-size: 0.78rem; font-weight: 600; text-transform: none; }
 .finding p { grid-column: 1; margin: 0; font-size: 0.82rem; color: var(--text-secondary); overflow-wrap: anywhere; }
 .finding .finding-detail { font-family: var(--mono); font-size: 0.74rem; color: var(--text-muted); }
+.finding-why { grid-column: 1; font-size: 0.76rem; color: var(--text-secondary); }
+.finding-why summary { width: max-content; cursor: pointer; color: var(--text-muted); font-weight: 600; }
+.finding-why p { margin-top: 4px; }
 .finding .finding-action, .finding .finding-locked { grid-column: 2; grid-row: 1 / span 3; }
 .finding-action { display: grid; gap: 4px; margin: 0; font-size: 0.66rem; }
 .finding select { min-width: 190px; max-width: 100%; }

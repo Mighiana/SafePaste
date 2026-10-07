@@ -289,6 +289,10 @@
     byId("flow-steps").setAttribute("data-stage", result ? (copied ? "copy" : "review") : input.value ? "sanitize" : "paste");
   }
 
+  function whyFinding(finding) {
+    return "Rule " + finding.ruleId + ": " + finding.reason + ". " + finding.policyReason;
+  }
+
   function resetCopy() {
     if (copyTimer !== null) clearTimeout(copyTimer);
     copyTimer = null;
@@ -466,10 +470,18 @@
       const detail = document.createElement("p");
       detail.className = "finding-detail";
       detail.textContent = "→ " + finding.replacement;
-      detail.title = "Rule: " + finding.ruleId + " · " + finding.reason + " · " + finding.policyReason;
+      const why = document.createElement("details");
+      why.className = "finding-why";
+      const whySummary = document.createElement("summary");
+      whySummary.textContent = "Why?";
+      const whyText = document.createElement("p");
+      whyText.textContent = whyFinding(finding);
+      why.appendChild(whySummary);
+      why.appendChild(whyText);
       item.appendChild(heading);
       item.appendChild(reason);
       item.appendChild(detail);
+      item.appendChild(why);
       if (finding.allowKeep) {
         const label = document.createElement("label");
         label.className = "finding-action";
@@ -499,7 +511,8 @@
             revokeDownloads();
             const decided = result.findings.find(function (entry) { return entry.id === finding.id; });
             detail.textContent = "→ " + decided.replacement;
-            detail.title = "Rule: " + decided.ruleId + " · " + decided.reason + " · " + decided.policyReason;
+            whyText.textContent = whyFinding(decided);
+            copied = false;
             renderReport();
             setView(showPreview);
             resetCopy();
@@ -581,6 +594,7 @@
 
   function showReview(value, settings, applied, masked) {
     result = applied;
+    copied = false;
     maskedOutput = masked;
     reviewedInput = value;
     reviewedOptions = JSON.stringify(settings);
