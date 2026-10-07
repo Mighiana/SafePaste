@@ -33,7 +33,7 @@ PASS accessibility static: status not color-only - Important state is presented 
 | Semantic HTML is used | Automated static HTML check | PASS | Page includes `header`, `main`, `section`, and heading structure. |
 | Keyboard focus is visible | Automated static CSS check | PASS | CSS defines `:focus-visible` outline for buttons, textareas, and inputs. |
 | Controls use keyboard-operable elements | Automated static HTML check | PASS | Controls are native `button`, `textarea`, and checkbox input elements. |
-| Sanitized/preview tabs use native controls | Static HTML review | PASS | `sanitized.log` and `preview.log` are buttons with tab semantics and `aria-selected` state managed in JavaScript. |
+| Sanitized/preview tabs use native controls | Static HTML review | PASS | The `Text` (sanitized) and `Masked view` (preview) tabs are buttons with tab semantics and `aria-selected` state managed in JavaScript. |
 | Category chips are non-interactive status indicators | Static HTML review | PASS | Category chips are visual/status chips, not hidden controls; the actual configurable IPv4 control remains the labeled checkbox. |
 | Controls are reachable by keyboard | Human browser/manual check required | NOT VERIFIED | Manual check: load the page in a browser and use Tab/Shift+Tab through every control. |
 | Logical tab order | Human browser/manual check required | NOT VERIFIED | Manual check: verify focus moves through input, output, toggle, buttons, and summary in a sensible order. |
