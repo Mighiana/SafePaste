@@ -5,6 +5,8 @@
 Added:
 - `.github/workflows/pages.yml` runs the static privacy, sanitizer, review-UI and
   worker checks, then publishes only the browser app files to GitHub Pages.
+- Deployment is gated on the full `ci` workflow: it runs only after `ci` succeeds
+  for a push to `main` (or on manual dispatch), and deploys that exact commit.
 
 Stakeholder impact:
 A public demo link. Analysis remains in the browser; Pages adds no backend. Pages
