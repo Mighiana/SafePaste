@@ -142,3 +142,21 @@ not a precise attribution. Phase 11 ReDoS fixture timings are in
 - Peak resident memory for the whole `--full` run was about 820 MB in Node
   (measured once with `/usr/bin/time -v`); browser memory is not measured here.
 - Nothing above 16 MiB is supported.
+
+## Phase 12 re-run (engineVersion 8, no engine change)
+
+`node evals/run-benchmarks.js --full` on branch `devin/1791375313-docs`, same machine
+and conditions as above, single run: **PASS, 64 cases within bounds**.
+
+| Input | Format | Tier | Outcome | ms |
+| --- | --- | --- | --- | --- |
+| 1 MiB sparse | text / auto | large | ok, 56 findings | 100 / 408 |
+| 1 MiB dense | text / auto | large | ok, 41,717 findings | 174 / 495 |
+| 10 MiB sparse | text / auto | large | ok, 553 findings | 922 / 3,119 |
+| 10 MiB dense | text / auto | large | fail-closed `FINDING_LIMIT` | 977 / 1,478 |
+| 16 MiB sparse | text / auto | large | ok, 881 findings | 1,378 / 4,886 |
+| 16 MiB dense | text / auto | large | fail-closed `FINDING_LIMIT` / `FIELD_LIMIT` | 1,503 / 793 |
+| 25 MiB, 50 MiB | all | all | fail-closed `INPUT_LIMIT` | 0 |
+| 1.81 MiB pathological, worst case (dotted numerics) | text | standard | ok, 0 findings | 850 |
+
+Differences from the phase 11 run are within single-run noise; none were investigated.

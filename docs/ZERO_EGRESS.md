@@ -68,7 +68,7 @@ rule id plus `file:line` only, never matched text.
 | Storage | `localStorage`, `sessionStorage`, `indexedDB`/`IDB*`, `document.cookie`/`cookieStore`, `caches.`/`CacheStorage`, `navigator.storage`, file-system/WebSQL APIs |
 | Unsafe DOM | `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, HTML parsers/`srcdoc`, `eval`/`new Function`/string timers, `setAttribute('style'/'on*')`, `console.*` (prevents logging input) |
 | Script loaders | `new Worker`/`importScripts` only with literal local relative paths; no `type: 'module'`; no remote URL strings |
-| HTML | exactly one early CSP meta with the exact directive set above, no unsafe sources, no header-only directives, no inline script/style/handlers, no `javascript:`, iframes/objects/forms/`<base>`, prefetch/preconnect/icon/manifest links, `ping`; every `src`/`href` is local and exists |
+| HTML | exactly one early CSP meta with the exact directive set above, no unsafe sources, no header-only directives, no inline script/style/handlers, no `javascript:`, iframes/objects/forms/`<base>`, prefetch/preconnect/icon/manifest links, `ping`; every `src`/`href` is local and exists; every `<textarea>` and text/search `<input>` has `autocomplete="off"` (phase 12) so browsers do not restore or autofill log text |
 | CSS | no `@import`, `@font-face`, `url(` or `image-set(` |
 | CLI (`cli/`, `bin/`) | no network/child-process Node modules, `fetch`, `eval`/`vm`; no `writeFile*`, `appendFile*`, `createWriteStream`, `rename`, `copyFile`, `symlink`; `openSync` only with `'r'` or exclusive `'wx'` |
 | Package | `package.json` has no dependency maps, no install/prepare scripts, no `npx`/`npm install`/`curl` scripts |

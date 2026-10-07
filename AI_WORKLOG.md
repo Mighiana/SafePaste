@@ -1,5 +1,30 @@
 # AI Worklog
 
+## Later extension — phase 12 (2026-10-07)
+
+New branch from the phase 11 tip e96a69f; all 24 inherited entry points passed
+before changes. Docs were written from fresh command output (all 24 suites,
+`run-benchmarks.js --full`, CLI runs on the synthetic CI fixture,
+`inspectDetectors()`/`inspectPolicies()`), not copied from earlier summaries.
+Privacy-invariant audit findings, fixed with regressions:
+- The output textarea had no `autocomplete="off"`; the static checker had no rule
+  for it. Added the `HTML_TEXT_FIELD_AUTOCOMPLETE` rule first; it flagged the
+  output textarea, then the attribute was added.
+- Custom-profile labels "IPv4 addresses" / "Preserve loopback IPv4" / "Preserve
+  RFC1918 private IPv4" understated the engine: the same controls keep or redact
+  IPv6 and MAC, and loopback/private also cover ::1 and fc00::/7. Verified by
+  running the engine, relabelled, and added a regression that reads index.html and
+  checks the labels against the detector catalog and engine output (run against
+  the old index.html it fails: 9/10, missing IPv6). The academic accessibility
+  check that pins the legacy "Redact non-loopback IPv4 addresses" toggle text was
+  kept; only the help text below it was extended.
+My own mistakes: a python heredoc again turned `\b` into a backspace in the new
+checker rule; the first regex also used `\b` before attribute names, which the
+mutated-copy test caught (`\s` is correct). The previous README still said
+"Analysis is still synchronous" next to the phase 9 worker note; the rewrite removes
+that contradiction. Screenshots and the demo clip are left pending for the browser stage.
+No dependencies, browser/server setup, PR or deployment.
+
 ## Later extension — phase 11 (2026-10-07)
 
 New branch from the phase 10 tip 529ce70; all inherited suites passed before changes.

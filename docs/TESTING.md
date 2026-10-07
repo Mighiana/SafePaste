@@ -41,7 +41,7 @@ All commands are dependency-free (`node <file>`), exit 0 on success and 1 on fai
 | `node tests/test-cli.js` | extension | 9/9 |
 | `node evals/run-static-privacy-checks.js` | extension (static) | PASS |
 | `node evals/run-benchmarks.js` | extension | PASS, 32 cases within bounds |
-| `node tests/test-regressions.js` | **new, phase 11** | 9/9 |
+| `node tests/test-regressions.js` | **new, phase 11** (+1 in phase 12) | 10/10 |
 | `node tests/test-properties.js` | **new, phase 11** | 11/11 (seed 20261007, 160 samples each) |
 | `node evals/run-corpora.js` | **new, phase 11** | 144/144 |
 | `node evals/run-red-team-extended.js` | **new, phase 11** | 46/46 matched (36 pass, 10 known misses, 0 fail) |

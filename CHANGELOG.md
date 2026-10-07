@@ -1,5 +1,35 @@
 # Changelog
 
+## October 2026: later documentation / portfolio evidence extension (phase 12)
+
+Changed:
+README.md rewritten as a technical case study (provenance table separating the
+academic base from the October 2026 extension, threat model with
+threat/control/residual limitation, security-boundary diagram, formats and
+limits, detectors, profiles, pseudonyms, review workflow, CLI exit codes,
+zero-egress controls, current test and benchmark numbers, accessibility verified
+vs unverified, limitations). New docs/PORTFOLIO_PACKAGE.md and
+docs/EXTENSION_REPORT.md built from this phase's command output. Two privacy
+fixes found while auditing invariants for the docs: the output textarea now has
+autocomplete="off" and the static checker requires it on every text field; the
+Custom network controls were labelled "IPv4" although they also change IPv6 and
+MAC handling (and loopback/private include ::1 and fc00::/7), so the labels, the
+Network category chip and the Compatibility help text now name every address
+class. Engine behavior and engineVersion (8) are unchanged.
+
+Why:
+The phase brief asked for professional documentation from real evidence. A
+profile control that silently changes more than its label says contradicts the
+"no silent behavior" requirement; form-state restoration could re-display pasted
+logs.
+
+Stakeholder impact:
+Reviewers see exactly which address classes a toggle affects. No detection or
+output change.
+
+Mapped requirement:
+User extension phase 12 (README / architecture / portfolio evidence).
+
 ## October 2026: later evaluation / red-team / CI extension (phase 11)
 
 Changed:

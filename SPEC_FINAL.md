@@ -167,3 +167,30 @@ Final regression F8:
 - Added editor-style panes, line gutters, sanitized/preview output tabs, grouped category chips, visual redaction bars, local FileReader drag-and-drop for text-like files, and non-conflicting keyboard shortcuts.
 - Removed all external font/resource references from the UI integration and kept system/local font stacks.
 - Added narrow final-regression coverage for explicit structured `secret` fields, using `[REDACTED_SECRET]`.
+
+## 11. Later Extension Addendum (October 2026)
+
+Sections 1–10 describe the academic base version and are kept as written. The later
+security/privacy engineering extension (phases 2–12) adds the following; details
+and current evidence are in README.md, docs/ENGINE_API.md and docs/EXTENSION_REPORT.md.
+
+- Modules: `src/sanitizer.js` remains the single behavioral source of truth and is
+  shared by the browser UI, the local Web Worker `src/worker.js` and the CLI
+  `bin/safepaste.js`. The engine adds bounded format parsing (JSON, env, HTTP
+  headers, logfmt), a 26-entry detector catalog, profiles (strict, support,
+  incident, custom, legacy), review overrides, session-local pseudonyms and a
+  metadata-only privacy report.
+- Network policy: IPv6 and MAC addresses are network identifiers governed by the
+  same network control as IPv4; profiles classify loopback and private ranges.
+  This supersedes the "does not separately classify public and private" limitation
+  for the extension profiles only; the legacy mode keeps the section 8 behavior.
+- Explicit user-driven exports (clarifies PS2 and R18): the user may copy the
+  reviewed sanitized text and download `sanitized.log` or the metadata-only
+  `privacy-report.json`; the CLI writes only files named with `-o`/`--report` and
+  never overwrites. These happen only on an explicit action. The original input is
+  never exported, and nothing is persisted automatically (no storage APIs, no
+  autosave, text fields use `autocomplete="off"`).
+- Zero egress is enforced by a meta CSP with `connect-src 'none'`, a static privacy
+  checker and the pre-commit gate (docs/ZERO_EGRESS.md).
+- Human review stays required: credentials, tokens and secrets cannot be kept;
+  Preview masks every finding, including KEEP decisions.
