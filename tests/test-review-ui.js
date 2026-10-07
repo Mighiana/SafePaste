@@ -402,9 +402,12 @@ test("programmatic stale input/policy is rejected at copy, export and view bound
 
 test("input limits fail closed; Clear and page exit release review closure and revoke exports", async () => {
   let clears = 0;
-  const spy = Object.assign({}, engine, { createReview(value, options) {
-    const session = engine.createReview(value, options);
-    return { findings: session.findings, apply: session.apply, clear() { clears += 1; session.clear(); } };
+  const spy = Object.assign({}, engine, { createSession() {
+    const owner = engine.createSession();
+    return { clear: owner.clear, createReview(value, options) {
+      const session = owner.createReview(value, options);
+      return { findings: session.findings, apply: session.apply, clear() { clears += 1; session.clear(); } };
+    } };
   } });
   const h = buildHarness({ engine: spy });
   await sanitize(h, input, "strict");

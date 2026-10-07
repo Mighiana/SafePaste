@@ -18,7 +18,9 @@ redacted. These capabilities were **not part of the academic base version**.
 Phase 5 adds a browser findings review workspace using that same core. The
 visibly selected Compatibility policy retains the original IPv4 checkbox
 behavior; explicit profiles and custom categories are available beside it.
-This is **not yet a CLI, worker, pseudonymizer or advanced detector set**.
+Phase 6 adds optional in-memory session-local pseudonymization of context identifiers;
+secrets stay fully redacted. Clear/reload resets mappings; mode edits disable stale
+exports. This is **not yet a CLI, worker or advanced detector set**.
 Omitting a profile in the engine preserves legacy loopback behavior. Explicit strict
 redacts all supported IPv4; support keeps RFC1918/loopback; incident keeps network
 evidence; custom exposes category/network controls. Credentials/tokens/secrets

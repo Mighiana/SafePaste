@@ -48,6 +48,12 @@
 
         <section class="toolbar" aria-label="Detection rules and actions">
           <div class="policy-controls">
+            <label for="mode-select">Output mode
+              <select id="mode-select" aria-describedby="mode-help">
+                <option value="redaction">Redaction</option>
+                <option value="pseudonymization">Pseudonymization · context only</option>
+              </select>
+            </label>
             <label for="profile-select">Privacy profile
               <select id="profile-select" aria-describedby="policy-warning">
                 <option value="legacy">Compatibility · original IPv4 behavior</option>
@@ -73,6 +79,7 @@
             </details>
           </div>
           <p id="policy-warning" class="review-note">Compatibility preserves loopback. Choose Strict privacy for broader supported redaction. Human review required.</p>
+          <p id="mode-help" class="review-note">Pseudonyms preserve identifier relationships in this tab only; secrets always redact. Maps stay in memory and reset on Clear/reload. KEEP still preserves originals in final Copy/download; Preview stays masked.</p>
           <fieldset id="custom-controls" hidden disabled>
             <legend>Custom categories · checked means REDACT</legend>
             <div class="custom-grid">

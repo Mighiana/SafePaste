@@ -7,6 +7,33 @@ see `REVIEW_UI_STAGE_RESULT.md` for that consumer's privacy and state contract.
 
 ## Detection/review API
 
+### Phase 6: session-local pseudonymization
+
+`mode: 'redaction'` is the default; `'pseudonymization'` replaces only supported
+context identifiers (email, account username, home-path username, network) with
+category-specific `[EMAIL_n]`, `[USERNAME_n]`, `[PATH_n]`, `[IP_n]` markers.
+Credentials/tokens/secrets always use full redaction markers and still reject KEEP.
+`policy.mode` and `report.mode` make the selected mode inspectable. Actions remain
+REDACT/KEEP: REDACT uses the selected replacement; KEEP explicitly returns originals.
+
+`createSession()` exposes `createReview(input, options)` and `clear()`. Its maps
+survive review edits/individual review.clear() until session.clear(), which resets
+numbering and clears all active reviews. The browser owns one such session per tab;
+Clear and page exit reset it. Reload constructs a fresh session. Standalone
+`createReview`, `analyze`, and `sanitize` use isolated per-call maps.
+
+Raw mapping keys remain private closure memory, never findings/report or storage.
+JSON-decoded values share mappings with literal equivalents; Unicode usernames in
+parsed fields use bounded letters/numbers/marks/dot/underscore/hyphen syntax.
+Comparisons are exact decoded strings, not case folding or Unicode normalization.
+Home-path and account categories deliberately have separate namespaces. Existing
+well-shaped redaction/pseudonym markers are opaque and idempotent. Markers already
+present when allocated (including decoded JSON) reserve their numbers. Arbitrary
+future input can contain an earlier marker: markers are not authenticated and
+cannot prove provenance. Pseudonyms reveal relationships, not anonymization.
+Session reserved markers/allocated values are bounded at 100,000, then
+`SESSION_LIMIT` returns no output; Clear releases references, not secure JS erasure.
+
 - `inspectDetectors()` returns an immutable catalog with IDs, category/control,
   severity, description, reason, replacement, context requirements and KEEP
   eligibility. `certainty` means deterministic rule match, not ML probability.

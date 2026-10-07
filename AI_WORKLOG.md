@@ -1,5 +1,20 @@
 # AI Worklog
 
+## Later extension — phase 6 (2026-10-07)
+
+Verified review-UI tip 9581e18 and core ancestry; clean new branch from that tip.
+Independent baseline on this VM: unit 38/38, eval 73/73, exact properties 91/91
+across 21 cases, red-team 15/15, UI smoke PASS, product 5/5, accessibility static
+18/18, core 9/9, parser 16/16, policy 22/22, hook PASS, mocked review UI 22/22.
+Added shared createSession maps, explicit mode, private decoded mapping keys,
+identifier-only pseudonyms and marker idempotence/reservation. Browser Clear/page
+exit resets maps; edits/mode changes invalidate exports but retain tab relationships.
+Inherited clear-spy test now observes session.createReview (all assertions retained).
+New 6/6 focused pseudonym tests include generated injection/stability properties,
+JSON escaping/Unicode, secret locks, mocked Copy/KEEP Preview/stale exports/reset.
+All original/inherited suites independently rerun successfully after phase 6.
+No dependencies, persisted logs, network primitives, browser/server setup or PR.
+
 This file records meaningful AI-assisted engineering decisions and real failures. It intentionally omits trivial command-by-command noise.
 
 ## Entries

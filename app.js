@@ -9,6 +9,8 @@
   const status = byId("status-message");
   const profile = byId("profile-select");
   const format = byId("format-select");
+  const mode = byId("mode-select");
+  const session = engine.createSession();
   const legacyIp = byId("redact-ip");
   const copy = byId("copy-button");
   const logDownload = byId("download-log");
@@ -65,7 +67,7 @@
   };
 
   function options() {
-    const settings = { format: format.value || "auto" };
+    const settings = { format: format.value || "auto", mode: mode.value || "redaction" };
     if (profile.value === "legacy") {
       settings.redactIpAddresses = legacyIp.checked;
     } else {
@@ -186,14 +188,14 @@
       preview.textContent = "Your visual redaction preview appears here.";
       return;
     }
-    const pattern = /\[REDACTED_[A-Z_]+\]/g;
+    const pattern = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC)_[1-9][0-9]{0,9})\]/g;
     let cursor = 0;
     let match;
     while ((match = pattern.exec(maskedOutput))) {
       preview.appendChild(document.createTextNode(maskedOutput.slice(cursor, match.index)));
       const bar = document.createElement("span");
       bar.className = "redaction-bar";
-      bar.setAttribute("data-category", match[0].slice(10, -1).replace(/_/g, " "));
+      bar.setAttribute("data-category", match[0].slice(1, -1).replace(/^REDACTED_/, "").replace(/_[0-9]+$/, "").replace(/_/g, " "));
       bar.textContent = "MASKED";
       preview.appendChild(bar);
       cursor = match.index + match[0].length;
@@ -361,7 +363,7 @@
     status.textContent = "Analyzing locally…";
     try {
       const settings = options();
-      review = engine.createReview(input.value, settings);
+      review = session.createReview(input.value, settings);
       result = review.apply();
       const mask = {};
       review.findings.forEach(function (finding) { mask[finding.id] = "REDACT"; });
@@ -486,6 +488,7 @@
   byId("clear-button").addEventListener("click", function () {
     if (input.value && !window.confirm("Clear input and all review decisions? This cannot be undone.")) return;
     input.value = "";
+    session.clear();
     byId("file-input").value = "";
     invalidate("Cleared. Paste logs to begin.");
     setView(false);
@@ -499,7 +502,7 @@
   input.addEventListener("scroll", function () { byId("input-gutter").scrollTop = input.scrollTop; });
   output.addEventListener("scroll", function () { byId("output-gutter").scrollTop = output.scrollTop; });
   preview.addEventListener("scroll", function () { byId("output-gutter").scrollTop = preview.scrollTop; });
-  [profile, format, legacyIp].concat(policyInputs).forEach(function (control) {
+  [profile, format, mode, legacyIp].concat(policyInputs).forEach(function (control) {
     control.addEventListener("change", function () {
       invalidate("Policy or format changed. Sanitize again; previous decisions and exports were cleared.");
       inspectPolicy();
@@ -566,6 +569,7 @@
   });
   window.addEventListener("pagehide", function () {
     invalidate("Review ended. Sanitize again after returning; human review required.");
+    session.clear();
   });
 
   inspectPolicy();
