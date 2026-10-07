@@ -33,9 +33,9 @@ All commands are dependency-free (`node <file>`), exit 0 on success and 1 on fai
 | `node tests/test-parsers.js` | extension | 16/16 |
 | `node tests/test-policies.js` | extension | 22/22 |
 | `node tests/test-hook.js` | extension | PASS |
-| `node tests/test-review-ui.js` | extension (mocked DOM) | 24/24 |
+| `node tests/test-review-ui.js` | extension (mocked DOM) | 28/28 |
 | `node tests/test-pseudonyms.js` | extension | 6/6 |
-| `node tests/test-detectors.js` | extension | 14/14 |
+| `node tests/test-detectors.js` | extension | 15/15 |
 | `node tests/test-static-privacy.js` | extension | 10/10 |
 | `node tests/test-worker.js` | extension (mock Worker) | 10/10 |
 | `node tests/test-cli.js` | extension | 9/9 |
@@ -46,6 +46,8 @@ All commands are dependency-free (`node <file>`), exit 0 on success and 1 on fai
 | `node evals/run-corpora.js` | **new, phase 11** | 144/144 |
 | `node evals/run-red-team-extended.js` | **new, phase 11** | 46/46 matched (36 pass, 10 known misses, 0 fail) |
 | `node evals/run-contract-checks.js` | **new, phase 11** (static) | 20/20 |
+| `node tests/test-contrast.js` | new, review polish (static) | 52/52 token pairs, light + dark |
+| `node tests/test-theme.js` | new, light/dark switch (minimal DOM) | 4/4 |
 
 ## Corpora (`evals/corpora/*.json`)
 

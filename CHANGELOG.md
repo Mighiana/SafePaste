@@ -1,5 +1,16 @@
 # Changelog
 
+## October 2026: light/dark switch
+
+Added:
+- A light/dark switch in the header (`#theme-toggle`, `src/theme.js`). It starts on the
+  system setting and follows system changes until the user picks a theme. The choice is
+  not stored. The dark tokens moved from `@media (prefers-color-scheme: dark)` to
+  `:root[data-theme="dark"]`; `src/theme.js` loads in `<head>` so the page paints in the
+  right theme.
+- `tests/test-theme.js` (in CI): system start, both switch directions, manual choice beats
+  later system changes, no storage or network APIs.
+
 ## October 2026: review polish, dark mode, internal hostnames (engineVersion 9)
 
 Added:

@@ -13,7 +13,7 @@ const { spawnSync } = require("child_process");
 const ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRS = new Set([".git", "node_modules", "history"]);
 const TEXT_EXT = /\.(?:js|json|html|css|md|yml|yaml|sh)$/;
-const PRODUCTION_JS = ["src/sanitizer.js", "src/worker.js", "app.js", "bin/safepaste.js"];
+const PRODUCTION_JS = ["src/sanitizer.js", "src/worker.js", "src/theme.js", "app.js", "bin/safepaste.js"];
 const results = [];
 function check(name, run) {
   try { const detail = run(); results.push([true, name, detail || ""]); }

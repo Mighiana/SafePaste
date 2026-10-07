@@ -240,7 +240,7 @@ synthetic log and its report. CI never reads private logs. See [docs/CLI.md](doc
 
 ## Testing & evaluation
 
-All 25 entry points run from the repository root with Node 18+ and no install;
+All 26 entry points run from the repository root with Node 18+ and no install;
 the same set runs in GitHub Actions. Current results (Node v22.20.0, linux/x64,
 engineVersion 9), all exit 0:
 
@@ -258,7 +258,7 @@ engineVersion 9), all exit 0:
 | evals/run-benchmarks.js | PASS, 32 cases | tests/test-regressions.js | 10/10 |
 | tests/test-properties.js | 11/11 | evals/run-corpora.js | 144/144 |
 | evals/run-red-team-extended.js | 46/46 matched | evals/run-contract-checks.js | 20/20 |
-| tests/test-contrast.js | 52/52 pairs, light + dark | | |
+| tests/test-contrast.js | 52/52 pairs, light + dark | tests/test-theme.js | 4/4 |
 
 Corpora (synthetic, `evals/corpora/`): true-positive 56/56, false-positive 22/22,
 ambiguous 9/9, adversarial 39/39 (23 detected, 16 recorded known misses),
@@ -354,6 +354,7 @@ archived final eval results: `node evals/run-evals.js --write evals/results_fina
 index.html, styles.css, app.js   browser UI (CSP, review workspace)
 src/sanitizer.js                 shared UMD engine
 src/worker.js                    local Web Worker wrapper
+src/theme.js                     light/dark switch (follows the system, stores nothing)
 bin/safepaste.js                 CLI
 tests/                           unit, parser, policy, detector, property, regression, UI-harness tests
 evals/                           academic evals, graders, manual tests, corpora, red-team, benchmarks, static checks
