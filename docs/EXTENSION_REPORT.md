@@ -182,11 +182,14 @@ methodology.
 
 ## 17. Incomplete / pending
 
-- Real-browser validation (worker, CSP enforcement, `file://`, keyboard, screen
-  reader, viewports) and all screenshots/demo video: pending, owned by the final
-  browser test stage. None were fabricated.
+- Real-browser validation: one Chrome pass on Linux covered same-origin-only
+  requests with no CSP violations, findings, profiles, KEEP/REDACT, JSON,
+  pseudonyms, report/downloads, keyboard, 390 px layout, worker cancel/limits and
+  the `file://` fallback. It fixed a 390 px select overflow and a too-short sample
+  `api_key`. Not covered: other browsers, screen readers, clipboard read-back.
+  Evidence: `docs/evidence/`.
 - GitHub Actions has not yet run on GitHub runners; benchmark bounds may need
   review on slow shared runners.
 - YAML, renamed fields, XML password elements, lowercase PEM labels, dotted MACs,
   obfuscated emails and other recorded known misses remain unsupported.
-- No PR opened, nothing deployed.
+- PR #1 open, not merged; nothing deployed.

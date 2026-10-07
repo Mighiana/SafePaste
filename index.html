@@ -135,7 +135,7 @@
             </label>
             <button id="sample-button" class="secondary" type="button">Load synthetic sample</button>
           </div>
-          <p class="review-note">Files stay in this tab. Loading replaces the input after confirmation. File limit: 2 MiB; text limit: 2,097,152 UTF-16 units. Browser responsiveness is not yet benchmarked.</p>
+          <p class="review-note">Files stay in this tab. Loading replaces the input after confirmation. Size limit depends on the engine shown in the status bar: 16 MiB with the local worker, 2 MiB in the synchronous fallback. Larger inputs are refused, not partially processed.</p>
         </section>
 
         <section class="editor-grid" aria-label="Original and sanitized text">

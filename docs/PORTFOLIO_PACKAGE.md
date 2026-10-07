@@ -2,8 +2,8 @@
 
 Every number below was produced by the repository's own commands on the
 `devin/1791375313-docs` branch (Node v22.20.0, linux/x64, Intel Xeon Platinum
-8375C, 8 vCPU), on synthetic data only. Browser screenshots and the demo clip are
-**pending** real-browser capture; none have been produced or simulated here.
+8375C, 8 vCPU), on synthetic data only. Screenshots and the demo clip were captured
+from the real running app in Chrome on 2026-10-07 (synthetic sample data only).
 
 ## Project title
 
@@ -183,8 +183,8 @@ GitHub Actions. No runtime or development dependencies.
 
 Academic base version complete (2026). Security/privacy engineering extension
 (phases 2–12, October 2026) implemented and tested at engine, mocked-DOM and
-static level on a review branch; final real-browser validation, screenshots and
-demo clip pending. Not deployed as a hosted service; it is designed to run locally.
+static level on a review branch, plus one real-browser pass in Chrome (Linux).
+Not deployed as a hosted service; it is designed to run locally.
 
 ## Repository URL
 
@@ -192,17 +192,24 @@ https://github.com/Mighiana/SafePaste
 
 ## Visual evidence
 
-Status: **pending**. To be captured from the real running app with synthetic data
-only during the final browser validation stage. None exist yet.
+Captured from the real running app (served by `node evals/static-server.js`) and a
+real terminal on 2026-10-07, using only the built-in synthetic samples and committed
+fixtures. Desktop screenshots are full-page at 1585 px width.
 
-| # | Planned capture | Status |
+| # | Capture | File |
 | --- | --- | --- |
-| 1 | Main review workspace | pending |
-| 2 | Structured JSON sanitization | pending |
-| 3 | Findings review panel | pending |
-| 4 | Privacy profile selection | pending |
-| 5 | Pseudonymized output | pending |
-| 6 | Privacy report | pending |
-| 7 | CLI usage (terminal) | pending |
-| 8 | Evaluation / red-team results (terminal) | pending |
-| 9 | 8–15 s muted WebM: load synthetic log → findings → review → sanitize → report | pending |
+| 1 | Main review workspace (Compatibility, web sample) | [01-review-workspace.png](evidence/01-review-workspace.png) |
+| 2 | Structured JSON sanitization (Strict, Cloud/API JSON) | [02-structured-json.png](evidence/02-structured-json.png) |
+| 3 | Findings review panel (locked PASSWORD finding) | [03-findings-panel.png](evidence/03-findings-panel.png) |
+| 4 | Privacy profile selection (Custom, email kept) | [04-privacy-profiles.png](evidence/04-privacy-profiles.png) |
+| 5 | Pseudonymized output | [05-pseudonymized-output.png](evidence/05-pseudonymized-output.png) |
+| 6 | Privacy report (auth headers, locked Authorization) | [06-privacy-report.png](evidence/06-privacy-report.png) |
+| 7 | CLI usage (terminal) | [07-cli-usage.png](evidence/07-cli-usage.png) |
+| 8 | Evaluation / red-team results (terminal) | [08-eval-redteam-results.png](evidence/08-eval-redteam-results.png) |
+| 9 | Mobile 390 px (Security incident profile) | [09-mobile-390.png](evidence/09-mobile-390.png) |
+| 10 | 14 s muted VP9 WebM: load synthetic log, sanitize, preview masking, findings, report | [demo.webm](evidence/demo.webm) |
+
+The browser pass found two issues, fixed before capture: finding REDACT/KEEP selects
+overflowed their cards at 390 px, and the Cloud/API sample's 9-character `api_key`
+value was below the API_KEY minimum length and stayed visible. A stale file-picker
+note ("File limit: 2 MiB ... not yet benchmarked") was also corrected.

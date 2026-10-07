@@ -1,5 +1,26 @@
 # Changelog
 
+## October 2026: real-browser validation and visual evidence
+
+Changed:
+One Chrome pass on the running app (localhost static server and file://) with
+synthetic samples only. Fixed two issues it found: finding REDACT/KEEP selects
+overflowed their cards at 390 px (styles.css now bounds .finding select), and the
+Cloud/API JSON sample used a 9-character api_key value below the API_KEY minimum,
+so the shipped demo showed an unredacted key field (sample value lengthened; engine
+unchanged). Replaced a stale file-picker note that claimed a fixed 2 MiB limit and
+no benchmarks. Added docs/evidence/ (8 requested screenshots, a 390 px capture and
+a 14 s muted WebM) and updated README, PORTFOLIO_PACKAGE and EXTENSION_REPORT from
+"pending" to what was actually verified.
+
+Why:
+The brief required real, non-fabricated visual evidence, and the demo sample must
+not appear to leak a credential.
+
+Stakeholder impact:
+Mobile reviewers can use finding controls without horizontal overflow. No detection
+behavior change.
+
 ## October 2026: later documentation / portfolio evidence extension (phase 12)
 
 Changed:

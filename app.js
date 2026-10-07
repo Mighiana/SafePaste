@@ -56,7 +56,7 @@
     cloud: JSON.stringify({
       sample: "SAMPLE / SYNTHETIC DATA — fake credentials only",
       username: "demo_operator",
-      api_key: "DEMO_ONLY",
+      api_key: "SYNTHETIC_" + "DEMO_ONLY_NOT_A_REAL_KEY",
       client_ip: "203.0.113.24",
       release: "1.2.3.4",
       request_id: "demo-request-42"

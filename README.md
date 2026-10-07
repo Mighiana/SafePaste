@@ -104,8 +104,10 @@ package tree, which keeps it auditable at ~1,200 lines. Public API:
 Meta CSP cannot set `frame-ancestors`; direct `file://` use therefore has no
 anti-framing protection, and Chromium blocks workers from `file:` (the app then
 uses the synchronous fallback). See [docs/ZERO_EGRESS.md](docs/ZERO_EGRESS.md).
-These controls have been verified statically; real-browser CSP enforcement is
-part of the pending browser validation.
+These controls are verified statically and were checked in Chrome on
+2026-10-07: served from localhost the page made only five same-origin requests
+(index, styles, engine, app, worker) with no CSP violations; over `file://` it
+used the synchronous fallback.
 
 ## Supported input formats
 
@@ -286,7 +288,9 @@ inputs exceed the candidate or field limits and fail closed (`FINDING_LIMIT` /
 | --- | --- |
 | 18 static checks: labelled textareas, selects, custom fieldset; native controls; focus-visible styles; polite live status; tab semantics with roving focus; keyboard file-picker alternative to drag-drop; severity shown as text; muted text token contrast >= 4.5:1; responsive stacking and reduced motion | Real keyboard-only traversal and tab order in a browser; screen-reader announcements; rendered contrast and viewport layout; OS clipboard permission |
 
-Manual/browser accessibility validation is pending (owned by the final browser test stage).
+A Chrome pass (2026-10-07) checked keyboard sanitize/tab switching, Tab reaching the
+finding controls with a visible focus ring, and desktop plus 390 px layouts. A
+screen-reader test and an automated rendered-contrast audit have not been done.
 
 ## Human-centered design decisions
 
@@ -310,9 +314,9 @@ Manual/browser accessibility validation is pending (owned by the final browser t
 - CLI and browser share the engine but differ in environment (worker vs fallback
   limits, file handling, clipboard).
 - Meta CSP has header-only gaps; extensions and the OS are outside the trust boundary.
-- Browser, CSP enforcement, `file://` and assistive-technology behavior have not
-  yet been validated in a real browser in this branch; screenshots and the demo
-  clip are pending that validation ([visual evidence plan](docs/PORTFOLIO_PACKAGE.md#visual-evidence)).
+- Real-browser validation was one Chrome pass on Linux (2026-10-07); other browsers,
+  screen readers and clipboard read-back were not tested. Screenshots and the demo
+  clip are in [docs/evidence/](docs/evidence/) ([visual evidence](docs/PORTFOLIO_PACKAGE.md#visual-evidence)).
 
 ## Running locally
 
