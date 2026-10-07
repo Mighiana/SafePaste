@@ -803,6 +803,13 @@ textarea[readonly] {
   color: var(--text-muted);
 }
 
+.preview-limit {
+  display: block;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .redaction-bar {
   position: relative;
   display: inline-block;

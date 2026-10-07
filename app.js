@@ -22,7 +22,18 @@
   const policyInputs = categoryControls.map(function (name) { return byId("category-" + name); })
     .concat([byId("preserve-loopback"), byId("preserve-private")]);
   const capabilities = engine.getCapabilities();
+  const largeLimits = capabilities.largeLimits;
   const pageSize = 50;
+  const previewCharLimit = 1048576;
+  const previewMarkerLimit = 5000;
+  const gutterLineLimit = 10000;
+  const cancelButton = byId("cancel-button");
+  let worker = null;
+  let workerReady = false;
+  let workerDisabled = false;
+  let reviewInWorker = false;
+  let pendingJob = null;
+  let jobCounter = 0;
   let review = null;
   let result = null;
   let reviewedInput = null;
@@ -105,12 +116,153 @@
   }
 
   function lineCount(value) {
-    return value ? value.split(/\r\n|\r|\n/).length : 0;
+    if (!value) return 0;
+    const breaks = /\r\n|\r|\n/g;
+    let count = 1;
+    while (breaks.exec(value)) count += 1;
+    return count;
   }
 
+  // Line numbers stop at a fixed DOM bound; the pane meta still reports the real total.
   function gutter(id, value) {
     const count = Math.max(1, lineCount(value));
-    byId(id).textContent = Array.from({ length: count }, function (_, i) { return String(i + 1); }).join("\n");
+    const numbers = Array.from({ length: Math.min(count, gutterLineLimit) }, function (_, i) { return String(i + 1); });
+    if (count > gutterLineLimit) numbers.push("…");
+    byId(id).textContent = numbers.join("\n");
+  }
+
+  function mib(units) {
+    return (units / 1048576) + " MiB";
+  }
+
+  function inputLimit() {
+    return worker && workerReady ? largeLimits.maxInputLength : capabilities.maxInputLength;
+  }
+
+  function limitName() {
+    return worker && workerReady ? "local worker" : "synchronous fallback";
+  }
+
+  function limitMessage(what, size, unit) {
+    return "Size limit reached (INPUT_LIMIT): " + what.toLowerCase() + " is " + size + " " + unit + "; the " + limitName() + " limit is " + inputLimit() +
+      " (" + mib(inputLimit()) + "). Nothing was truncated or analyzed. Split the log and review each part.";
+  }
+
+  function engineStatus() {
+    byId("engine-status").textContent = worker && workerReady
+      ? "Engine: local worker · " + mib(largeLimits.maxInputLength) + " limit"
+      : worker ? "Engine: starting local worker · " + mib(capabilities.maxInputLength) + " until ready"
+        : "Engine: synchronous fallback · " + mib(capabilities.maxInputLength) + " limit (local worker unavailable)";
+  }
+
+  function setBusy(busy) {
+    cancelButton.hidden = !busy;
+    cancelButton.disabled = !busy;
+    if (busy) {
+      copy.disabled = true;
+      logDownload.disabled = true;
+      reportDownload.disabled = true;
+    }
+  }
+
+  function enableExports() {
+    copy.disabled = !result.sanitized.length;
+    logDownload.disabled = !result.sanitized.length;
+    reportDownload.disabled = false;
+  }
+
+  function startWorker(assumeReady) {
+    if (workerDisabled || typeof Worker !== "function") {
+      workerDisabled = true;
+      engineStatus();
+      return;
+    }
+    let candidate;
+    try {
+      candidate = new Worker("src/worker.js");
+    } catch (error) {
+      workerDisabled = true;
+      engineStatus();
+      return;
+    }
+    worker = candidate;
+    workerReady = Boolean(assumeReady);
+    reviewInWorker = false;
+    candidate.onmessage = function (event) { if (candidate === worker) receive(event.data); };
+    candidate.onerror = function (event) {
+      if (event && typeof event.preventDefault === "function") event.preventDefault();
+      if (candidate === worker) workerFailed();
+    };
+    candidate.onmessageerror = function () { if (candidate === worker) workerFailed(); };
+    engineStatus();
+  }
+
+  function stopWorker() {
+    if (!worker) return;
+    const current = worker;
+    worker = null;
+    workerReady = false;
+    reviewInWorker = false;
+    current.onmessage = null;
+    current.onerror = null;
+    current.onmessageerror = null;
+    current.terminate();
+  }
+
+  // Termination is the only cancellation and reset: it also discards the worker's pseudonym session.
+  function restartWorker() {
+    const wasReady = workerReady;
+    stopWorker();
+    startWorker(wasReady);
+  }
+
+  function workerFailed() {
+    const busy = pendingJob !== null;
+    pendingJob = null;
+    stopWorker();
+    workerDisabled = true;
+    setBusy(false);
+    engineStatus();
+    if (busy || result) {
+      invalidate("Local worker stopped (WORKER_UNAVAILABLE). No output is available. Sanitize again to use the synchronous fallback (" +
+        mib(capabilities.maxInputLength) + " limit).");
+    }
+  }
+
+  function post(kind, payload, done) {
+    jobCounter += 1;
+    pendingJob = { job: jobCounter, token: generation, done: done };
+    setBusy(true);
+    worker.postMessage(Object.assign({ type: kind, job: jobCounter }, payload));
+  }
+
+  function cancelPending() {
+    if (!pendingJob) return false;
+    pendingJob = null;
+    setBusy(false);
+    restartWorker();
+    return true;
+  }
+
+  function receive(message) {
+    const data = message && typeof message === "object" ? message : {};
+    if (data.type === "ready") {
+      workerReady = true;
+      engineStatus();
+      return;
+    }
+    if (!pendingJob || data.job !== pendingJob.job || data.type === "status") return;
+    const current = pendingJob;
+    pendingJob = null;
+    setBusy(false);
+    if (current.token !== generation) return;
+    if (data.type === "error") {
+      failReview({ code: /^[A-Z][A-Z0-9_]{0,40}$/.test(String(data.code)) ? data.code : "WORKER_ERROR" });
+    } else if (data.type === "result" && data.result && typeof data.result.sanitized === "string") {
+      current.done(data);
+    } else {
+      failReview({ code: "WORKER_PROTOCOL" });
+    }
   }
 
   function cursorStatus() {
@@ -181,6 +333,26 @@
     });
   }
 
+  // The preview DOM is bounded; a visible notice marks where display stops. Exports are never cut.
+  function previewCut(pattern) {
+    let cut = Math.min(maskedOutput.length, previewCharLimit);
+    let seen = 0;
+    let match;
+    while ((match = pattern.exec(maskedOutput)) && match.index < cut) {
+      seen += 1;
+      if (seen > previewMarkerLimit || match.index + match[0].length > cut) {
+        cut = match.index;
+        break;
+      }
+    }
+    pattern.lastIndex = 0;
+    if (cut < maskedOutput.length) {
+      const lineEnd = maskedOutput.lastIndexOf("\n", cut - 1);
+      if (lineEnd > 0) cut = lineEnd + 1;
+    }
+    return cut;
+  }
+
   function renderPreview() {
     preview.replaceChildren();
     preview.classList.toggle("empty", !maskedOutput);
@@ -189,10 +361,12 @@
       return;
     }
     const pattern = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC)_[1-9][0-9]{0,9})\]/g;
+    const cut = previewCut(pattern);
+    const visible = maskedOutput.slice(0, cut);
     let cursor = 0;
     let match;
-    while ((match = pattern.exec(maskedOutput))) {
-      preview.appendChild(document.createTextNode(maskedOutput.slice(cursor, match.index)));
+    while ((match = pattern.exec(visible))) {
+      preview.appendChild(document.createTextNode(visible.slice(cursor, match.index)));
       const bar = document.createElement("span");
       bar.className = "redaction-bar";
       bar.setAttribute("data-category", match[0].slice(1, -1).replace(/^REDACTED_/, "").replace(/_[0-9]+$/, "").replace(/_/g, " "));
@@ -200,7 +374,14 @@
       preview.appendChild(bar);
       cursor = match.index + match[0].length;
     }
-    preview.appendChild(document.createTextNode(maskedOutput.slice(cursor)));
+    preview.appendChild(document.createTextNode(visible.slice(cursor)));
+    if (cut < maskedOutput.length) {
+      const notice = document.createElement("span");
+      notice.className = "preview-limit";
+      notice.textContent = "Preview display limit reached after line " + Math.max(1, lineCount(visible) - 1) + " of " +
+        lineCount(maskedOutput) + ". Copy and downloads use the complete sanitized output; open sanitized.log to inspect it.";
+      preview.appendChild(notice);
+    }
   }
 
   function setView(isPreview) {
@@ -288,8 +469,8 @@
           if (!currentReview()) return;
           const next = Object.assign({}, overrides);
           next[finding.id] = control.value;
-          try {
-            result = review.apply(next);
+          const decide = function (decidedResult) {
+            result = decidedResult;
             overrides = next;
             generation += 1;
             revokeDownloads();
@@ -299,7 +480,18 @@
             renderReport();
             setView(showPreview);
             resetCopy();
+            enableExports();
             status.textContent = "Review decision applied locally. KEEP can expose values in Copy/download; Preview stays masked. Human review required.";
+          };
+          if (reviewInWorker) {
+            // Later decisions build on this one; only the newest worker reply is applied.
+            overrides = next;
+            status.textContent = "Applying review decision locally… Exports are paused.";
+            post("apply", { overrides: next }, function (data) { decide(data.result); });
+            return;
+          }
+          try {
+            decide(review.apply(next));
           } catch (error) {
             failReview(error);
           }
@@ -323,6 +515,9 @@
   function invalidate(message) {
     generation += 1;
     abortRead();
+    cancelPending();
+    if (reviewInWorker && worker) worker.postMessage({ type: "release" });
+    reviewInWorker = false;
     if (review) review.clear();
     review = null;
     result = null;
@@ -345,7 +540,7 @@
   }
 
   function currentReview() {
-    if (!review || !result) return false;
+    if (!result || pendingJob) return false;
     if (input.value !== reviewedInput || JSON.stringify(options()) !== reviewedOptions) {
       invalidate("Input or policy changed. Sanitize again; previous decisions and exports were cleared.");
       return false;
@@ -358,30 +553,52 @@
       "). Reduce input or check settings. No output is available; human review required.");
   }
 
-  function runSanitize() {
-    invalidate();
-    status.textContent = "Analyzing locally…";
-    try {
-      const settings = options();
-      review = session.createReview(input.value, settings);
-      result = review.apply();
-      const mask = {};
-      review.findings.forEach(function (finding) { mask[finding.id] = "REDACT"; });
-      maskedOutput = review.apply(mask).sanitized;
-      reviewedInput = input.value;
-      reviewedOptions = JSON.stringify(settings);
-      renderPreview();
-      renderCategories(result.findings);
-      renderReport();
-      renderFindings();
-      setView(showPreview);
-      copy.disabled = !result.sanitized.length;
-      logDownload.disabled = !result.sanitized.length;
-      reportDownload.disabled = false;
-      status.textContent = result.findings.length
+  function showReview(value, settings, applied, masked) {
+    result = applied;
+    maskedOutput = masked;
+    reviewedInput = value;
+    reviewedOptions = JSON.stringify(settings);
+    renderPreview();
+    renderCategories(result.findings);
+    renderReport();
+    renderFindings();
+    setView(showPreview);
+    enableExports();
+    status.textContent = result.findings.length
         ? "Analyzed locally — " + result.report.redacted + " redacted, " + result.report.kept +
           " kept. Review findings and final output before Copy/download. Human review required."
         : "No sensitive patterns detected by supported rules. Human review required; unknown secrets may remain.";
+  }
+
+  function runSanitize() {
+    invalidate();
+    const value = input.value;
+    if (value.length > inputLimit()) {
+      invalidate(limitMessage("Input", value.length, "UTF-16 units"));
+      return;
+    }
+    let settings;
+    try {
+      settings = options();
+    } catch (error) {
+      failReview(error);
+      return;
+    }
+    if (worker) {
+      status.textContent = "Analyzing locally in a background worker… Cancel is available.";
+      post("analyze", { input: value, options: settings }, function (data) {
+        reviewInWorker = true;
+        showReview(value, settings, data.result, typeof data.masked === "string" ? data.masked : "");
+      });
+      return;
+    }
+    status.textContent = "Analyzing locally…";
+    try {
+      review = session.createReview(value, settings);
+      const applied = review.apply();
+      const mask = {};
+      review.findings.forEach(function (finding) { mask[finding.id] = "REDACT"; });
+      showReview(value, settings, applied, review.apply(mask).sanitized);
     } catch (error) {
       failReview(error);
     }
@@ -447,8 +664,8 @@
       invalidate("Only local text-like files are supported. Paste other content manually.");
       return;
     }
-    if (file.size > capabilities.maxInputLength) {
-      invalidate("File exceeds the 2 MiB local file guardrail. No file was read.");
+    if (file.size > inputLimit()) {
+      invalidate(limitMessage("File", file.size, "bytes").replace("Nothing was truncated or analyzed.", "No file was read."));
       return;
     }
     if (typeof FileReader !== "function") {
@@ -464,8 +681,8 @@
       if (token !== generation) return;
       reader = null;
       const value = String(pending.result || "");
-      if (value.length > capabilities.maxInputLength) {
-        invalidate("Text exceeds the 2,097,152 UTF-16 unit guardrail. Input was not replaced.");
+      if (value.length > inputLimit()) {
+        invalidate(limitMessage("Text", value.length, "UTF-16 units").replace("Nothing was truncated or analyzed.", "Input was not replaced."));
         return;
       }
       input.value = value;
@@ -489,13 +706,21 @@
     if (input.value && !window.confirm("Clear input and all review decisions? This cannot be undone.")) return;
     input.value = "";
     session.clear();
+    if (worker) restartWorker();
     byId("file-input").value = "";
     invalidate("Cleared. Paste logs to begin.");
     setView(false);
     input.focus();
   });
   input.addEventListener("input", function () {
-    invalidate("Input changed. Sanitize again; previous decisions and exports were cleared.");
+    invalidate(input.value.length > inputLimit()
+      ? limitMessage("Input", input.value.length, "UTF-16 units")
+      : "Input changed. Sanitize again; previous decisions and exports were cleared.");
+  });
+  cancelButton.addEventListener("click", function () {
+    if (!pendingJob) return;
+    invalidate("Analysis cancelled. The local worker was terminated and restarted; pseudonym numbering was reset. No output is available.");
+    byId("sanitize-button").focus();
   });
   input.addEventListener("click", cursorStatus);
   input.addEventListener("keyup", cursorStatus);
@@ -565,13 +790,20 @@
     const modKey = event.ctrlKey || event.metaKey;
     const key = String(event.key || "").toLowerCase();
     if (modKey && key === "enter") { event.preventDefault(); runSanitize(); }
+    if (key === "escape" && pendingJob) { event.preventDefault(); cancelButton.click(); }
     if (modKey && event.shiftKey && key === "c" && !copy.disabled) { event.preventDefault(); copyOutput(); }
   });
   window.addEventListener("pagehide", function () {
     invalidate("Review ended. Sanitize again after returning; human review required.");
     session.clear();
+    stopWorker();
+    engineStatus();
+  });
+  window.addEventListener("pageshow", function () {
+    if (!worker) startWorker(false);
   });
 
+  startWorker(false);
   inspectPolicy();
   invalidate();
 })();

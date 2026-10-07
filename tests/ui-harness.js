@@ -131,6 +131,7 @@ function buildHarness(config = {}) {
       if (config.clipboard) return config.clipboard(value);
     } } }
   };
+  if (config.Worker) sandbox.Worker = config.Worker;
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, "../app.js"), "utf8"), sandbox, { filename: "app.js" });
   return {

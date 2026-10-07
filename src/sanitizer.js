@@ -144,6 +144,9 @@
 
   const LIMITS = Object.freeze({ maxInputLength: 2097152, maxCandidates: 100000,
     maxJsonDepth: 64, maxFields: 50000 });
+  // Opt-in session tier for the local worker and CLI; bounds are measured by evals/run-benchmarks.js.
+  const LARGE_LIMITS = Object.freeze({ maxInputLength: 16777216, maxCandidates: 100000,
+    maxJsonDepth: 64, maxFields: 1048576 });
   const DEFINITIONS = [
     ["AUTHORIZATION_HEADER", "credentials", "high", "Authorization value", "Explicit Authorization header", 100],
     ["BEARER_TOKEN", "tokens", "high", "Bearer token", "Bearer scheme with token syntax", 80],
@@ -312,9 +315,9 @@
     throw error;
   }
 
-  function checkInput(input) {
+  function checkInput(input, limits) {
     const source = String(input || "");
-    if (source.length > LIMITS.maxInputLength) fail("INPUT_LIMIT");
+    if (source.length > (limits || LIMITS).maxInputLength) fail("INPUT_LIMIT");
     return source;
   }
 
@@ -355,12 +358,12 @@
     fail(json ? "JSON_SYNTAX" : "FIELD_SYNTAX");
   }
 
-  function parseJson(source) {
+  function parseJson(source, limits) {
     let index = 0;
     const units = [];
     function whitespace() { while (/[\x20\t\r\n]/.test(source[index] || "X")) index += 1; }
     function add(unit, key, isKey) {
-      if (units.length >= LIMITS.maxFields) fail("FIELD_LIMIT");
+      if (units.length >= limits.maxFields) fail("FIELD_LIMIT");
       unit.key = key;
       unit.isKey = isKey;
       units.push(unit);
@@ -373,7 +376,7 @@
         index = unit.next; add(unit, key, false); return;
       }
       if (character === "{" || character === "[") {
-        if (depth >= LIMITS.maxJsonDepth) fail("DEPTH_LIMIT");
+        if (depth >= limits.maxJsonDepth) fail("DEPTH_LIMIT");
         const object = character === "{";
         const close = object ? "}" : "]";
         index += 1; whitespace();
@@ -405,12 +408,12 @@
     return units;
   }
 
-  function parseFields(source, format) {
+  function parseFields(source, format, limits) {
     const units = [];
     const assignments = /(?:^|[\s,;])(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]{0,63})[ \t]*=[ \t]*/g;
     const headers = /(?:^|[\r\n])([A-Za-z][A-Za-z0-9_-]{0,63})[ \t]*:[ \t]*/g;
     function add(unit, key) {
-      if (units.length >= LIMITS.maxFields) fail("FIELD_LIMIT");
+      if (units.length >= limits.maxFields) fail("FIELD_LIMIT");
       unit.key = key; units.push(unit);
     }
     function scan(pattern, header) {
@@ -447,7 +450,7 @@
     });
   }
 
-  function parseInput(source, requested) {
+  function parseInput(source, requested, limits) {
     if (FORMATS.indexOf(requested) === -1) fail("UNKNOWN_FORMAT");
     let format = requested;
     if (format === "auto") {
@@ -462,14 +465,14 @@
       }
     }
     if (format === "json") {
-      try { return { format: format, status: "parsed", units: parseJson(source) }; }
+      try { return { format: format, status: "parsed", units: parseJson(source, limits) }; }
       catch (error) {
         if (error.code !== "JSON_SYNTAX") throw error;
-        return { format: "text", status: "malformed-json-fallback", units: parseFields(source, "text") };
+        return { format: "text", status: "malformed-json-fallback", units: parseFields(source, "text", limits) };
       }
     }
     return { format: format, status: format === "text" ? "text" : "parsed",
-      units: requested === "text" ? [] : parseFields(source, format) };
+      units: requested === "text" ? [] : parseFields(source, format, limits) };
   }
 
   function explicitCategory(key) {
@@ -955,9 +958,9 @@
     return pieces.join("");
   }
 
-  function prepareReview(source, settings, policy, pseudonyms) {
+  function prepareReview(source, settings, policy, pseudonyms, limits) {
     const starts = lineStarts(source);
-    const parsed = parseInput(source, settings.format === undefined ? "auto" : settings.format);
+    const parsed = parseInput(source, settings.format === undefined ? "auto" : settings.format, limits);
     const detectionOptions = { redactIpAddresses: policy.name !== "legacy" || settings.redactIpAddresses !== false,
       includeLoopback: policy.name !== "legacy" };
     const candidates = resolve(collectParsed(source, detectionOptions, parsed));
@@ -1038,10 +1041,10 @@
     };
   }
 
-  function buildReview(input, options, pseudonyms, release) {
-    let source = checkInput(input);
+  function buildReview(input, options, pseudonyms, release, limits) {
+    let source = checkInput(input, limits);
     const policy = inspectPolicy(options);
-    const analysis = prepareReview(source, options || {}, policy, pseudonyms);
+    const analysis = prepareReview(source, options || {}, policy, pseudonyms, limits);
     const findings = analysis.findings;
     const report = makeReport(source.length, analysis, policy, findings);
     let active = true;
@@ -1056,12 +1059,21 @@
     });
   }
 
-  function createSession() {
+  function sessionLimits(config) {
+    if (config === undefined) return LIMITS;
+    if (!plainObject(config) || Object.keys(config).some(function (key) { return key !== "limits"; }) ||
+      (config.limits !== undefined && config.limits !== "standard" && config.limits !== "large")) fail("INVALID_SESSION_OPTIONS");
+    return config.limits === "large" ? LARGE_LIMITS : LIMITS;
+  }
+
+  function createSession(config) {
+    const limits = sessionLimits(config);
     const pseudonyms = createPseudonyms();
     const reviews = new Set();
     return Object.freeze({
+      limits: limits,
       createReview: function (input, options) {
-        const review = buildReview(input, options, pseudonyms, function () { reviews.delete(review); });
+        const review = buildReview(input, options, pseudonyms, function () { reviews.delete(review); }, limits);
         reviews.add(review);
         return review;
       },
@@ -1074,7 +1086,7 @@
 
   function createReview(input, options) {
     const pseudonyms = createPseudonyms();
-    return buildReview(input, options, pseudonyms, function () { pseudonyms.clear(); });
+    return buildReview(input, options, pseudonyms, function () { pseudonyms.clear(); }, LIMITS);
   }
 
   function analyze(input, options) {
@@ -1107,7 +1119,7 @@
     inspectPolicies: function () { return Object.freeze(PROFILE_NAMES.map(function (profile) { return inspectPolicy({ profile: profile }); })); },
     getCapabilities: function () { return Object.freeze(Object.assign({}, LIMITS,
       { formats: FORMATS, modes: MODES, profiles: PROFILE_NAMES, controls: CONTROLS, actions: Object.freeze(["REDACT", "KEEP"]),
-        lockedCategories: LOCKED, maxOverrides: LIMITS.maxCandidates })); },
+        lockedCategories: LOCKED, maxOverrides: LIMITS.maxCandidates, largeLimits: LARGE_LIMITS })); },
     isValidIpv4: isValidIpv4,
     isLoopbackIpv4: isLoopbackIpv4,
     REDACTION_LABELS: REDACTION_LABELS

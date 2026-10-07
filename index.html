@@ -114,6 +114,7 @@
             <div class="button-row">
               <button id="clear-button" type="button" class="secondary">Clear</button>
               <button id="sanitize-button" type="button" aria-label="Sanitize log">Sanitize</button>
+              <button id="cancel-button" type="button" class="secondary" hidden disabled>Cancel analysis</button>
               <button id="copy-button" type="button" disabled>Copy sanitized text</button>
             </div>
           </div>
@@ -203,6 +204,7 @@
 
         <section class="statusbar" aria-label="Review status">
           <span data-cursor-status>Ln 1, Col 1</span>
+          <span id="engine-status">Engine: starting</span>
           <span><strong data-status-redaction-count>0</strong> redactions found</span>
           <span class="status-dots" data-category-dots aria-hidden="true"></span>
           <ul class="privacy-footer">

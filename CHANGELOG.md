@@ -1,5 +1,29 @@
 # Changelog
 
+## October 2026: later worker / performance extension (phase 9)
+
+Changed:
+Added src/worker.js, a classic same-origin worker that loads src/sanitizer.js via
+importScripts and owns the pseudonym session. app.js posts jobs with increasing
+ids; replies for stale jobs or invalidated generations are dropped. Cancel, input
+edits during a job, Clear and page exit terminate the worker (which also resets
+pseudonym numbering) and start a fresh one. Workers return only fixed error codes,
+never messages, stacks or input. If construction or startup fails, the page uses
+the synchronous engine with the 2 MiB standard limit and says so in the status
+bar. The engine gains an opt-in large tier (createSession({ limits: "large" }):
+16 MiB input, 1,048,576 fields); the standard tier is unchanged. File size and
+pasted/typed length are checked before reading or analysis. Exports pause while
+a worker decision is pending. The preview DOM (1 MiB / 5,000 markers) and line
+gutter (10,000 lines) are bounded with a visible notice; exports are never cut.
+Added evals/run-benchmarks.js (quick bounds by default, --full for 1/10/16/25/50
+MiB sparse/dense; --write refuses to overwrite), docs/PERFORMANCE.md with the
+generated results, and tests/test-worker.js, which runs the real worker in a vm
+context behind a mocked Worker.
+
+Why:
+Large logs must not freeze the page, and resource overflow must never yield a
+partially sanitized export. Support is claimed only for measured sizes.
+
 ## October 2026: later zero-egress / CSP enforcement extension (phase 8)
 
 Changed:
