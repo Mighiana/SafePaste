@@ -42,7 +42,7 @@
   }
 
   function hasVersionFieldPrefix(source, candidateIndex) {
-    const beforeCandidate = source.slice(0, candidateIndex);
+    const beforeCandidate = source.slice(Math.max(0, candidateIndex - 160), candidateIndex);
     return /(?:^|[^A-Za-z0-9_-])["']?(?:version|release)["']?(?:\s*[:=]\s*|\s+)["']?$/i.test(beforeCandidate) ||
       /(?:^|[^A-Za-z0-9_-])["']?(?:app[_-]?version|software[_-]?version)["']?\s*[:=]\s*["']?$/i.test(beforeCandidate);
   }
@@ -112,7 +112,7 @@
       {
         category: "EMAIL",
         label: REDACTION_LABELS.EMAIL,
-        pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi
+        pattern: /\b[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,253}\.[A-Z]{2,63}\b/gi
       },
       {
         category: "USERNAME",
@@ -168,58 +168,178 @@
     return rules;
   }
 
-  function sanitize(input, options) {
+  const LIMITS = Object.freeze({ maxInputLength: 2097152, maxCandidates: 100000,
+    maxJsonDepth: 64, maxFields: 50000 });
+  const DEFINITIONS = [
+    ["AUTHORIZATION_HEADER", "credentials", "high", "Authorization value", "Explicit Authorization header", 100],
+    ["BEARER_TOKEN", "tokens", "high", "Bearer token", "Bearer scheme with token syntax", 80],
+    ["JWT", "tokens", "high", "JSON Web Token", "Three-part JWT syntax", 80],
+    ["AWS_ACCESS_KEY", "credentials", "high", "AWS access key", "AWS access-key prefix and length", 80],
+    ["SLACK_TOKEN", "tokens", "high", "Slack token", "Slack token prefix and length", 80],
+    ["API_KEY", "credentials", "high", "API credential", "Explicit credential field", 100],
+    ["SECRET", "secrets", "high", "Secret value", "Explicit secret field", 100],
+    ["PASSWORD", "credentials", "high", "Password", "Explicit password field", 100],
+    ["EMAIL", "email", "medium", "Email address", "Email-address syntax", 60],
+    ["USERNAME", "usernames", "medium", "Account identity", "Explicit username field", 60],
+    ["PATH_OR_USERNAME", "paths", "medium", "Home-directory identity", "Username component in a home-directory path", 60],
+    ["IP_ADDRESS", "network", "review", "IPv4 address", "Validated IPv4 syntax; contextual policy required", 20]
+  ];
+  const DETECTORS = Object.freeze(DEFINITIONS.map(function (item) {
+    return Object.freeze({ id: item[0].toLowerCase(), category: item[0], control: item[1],
+      severity: item[2], description: item[3], reason: item[4], priority: item[5],
+      replacement: REDACTION_LABELS[item[0]], replacementPolicy: "stable-marker",
+      certainty: "deterministic-rule-match", contextRequirements: item[4],
+      allowKeep: item[2] !== "high" });
+  }));
+  const BY_CATEGORY = Object.create(null);
+  DETECTORS.forEach(function (detector) { BY_CATEGORY[detector.category] = detector; });
+
+  function fail(code) {
+    const error = new Error("SafePaste: " + code);
+    error.code = code;
+    throw error;
+  }
+
+  function checkInput(input) {
     const source = String(input || "");
-    const matches = [];
-    let sanitized = source;
+    if (source.length > LIMITS.maxInputLength) fail("INPUT_LIMIT");
+    return source;
+  }
 
-    buildRules(options || {}).forEach(function (rule) {
-      sanitized = sanitized.replace(rule.pattern, function () {
-        const args = Array.prototype.slice.call(arguments);
-        const match = args[0];
-        const offset = args[args.length - 2];
-        const fullText = args[args.length - 1];
-        const candidate = rule.candidate ? rule.candidate(args) : match;
-        const indexOffset = rule.indexOffset ? rule.indexOffset(args) : 0;
-        const candidateIndex = offset + indexOffset;
-
-        if (rule.validator && !rule.validator(candidate, {
-          source: fullText,
-          index: candidateIndex,
-          match: match
-        })) {
-          return match;
+  function collect(source, options) {
+    const candidates = [];
+    buildRules(options).forEach(function (rule) {
+      let match;
+      while ((match = rule.pattern.exec(source)) !== null) {
+        let start = match.index;
+        let value = match[0];
+        if (rule.category === "AUTHORIZATION_HEADER") {
+          start += match[1].length;
+          value = match[0].slice(match[1].length);
+        } else if (["API_KEY", "SECRET", "PASSWORD", "USERNAME"].indexOf(rule.category) !== -1) {
+          start += match[1].length + match[2].length;
+          value = match[3];
+        } else if (rule.category === "PATH_OR_USERNAME") {
+          start += match[1].length + /^(?:[A-Za-z]:\\Users\\|\/home\/|\/Users\/)/.exec(match[2])[0].length;
+          value = match[3];
+        } else if (rule.category === "IP_ADDRESS") {
+          start += match[1].length;
+          value = match[2];
         }
-
-        matches.push({
-          category: rule.category,
-          text: candidate,
-          index: candidateIndex
-        });
-
-        if (rule.replacement) {
-          return rule.replacement.apply(null, args);
-        }
-
-        return rule.label;
-      });
+        if (rule.validator && !rule.validator(value, { source: source, index: start })) continue;
+        if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
+        candidates.push({ start: start, end: start + value.length, detector: BY_CATEGORY[rule.category] });
+      }
     });
+    return candidates;
+  }
 
-    const categories = Array.from(new Set(matches.map(function (match) {
-      return match.category;
-    }))).sort();
+  function resolve(candidates) {
+    candidates.sort(function (a, b) {
+      return a.start - b.start || b.detector.priority - a.detector.priority || b.end - a.end;
+    });
+    const resolved = [];
+    candidates.forEach(function (candidate) {
+      const previous = resolved[resolved.length - 1];
+      if (previous && candidate.start < previous.end) {
+        previous.end = Math.max(previous.end, candidate.end);
+        if (candidate.detector.priority > previous.detector.priority) previous.detector = candidate.detector;
+      } else {
+        resolved.push({ start: candidate.start, end: candidate.end, detector: candidate.detector });
+      }
+    });
+    return resolved;
+  }
 
-    return {
-      original: source,
-      sanitized: sanitized,
-      matches: matches,
-      categories: categories,
-      redactionCount: matches.length
-    };
+  function lineStarts(source) {
+    const starts = [0];
+    for (let index = 0; index < source.length; index += 1) {
+      if (source[index] === "\n" || source[index] === "\r") {
+        if (source[index] === "\r" && source[index + 1] === "\n") index += 1;
+        starts.push(index + 1);
+      }
+    }
+    return starts;
+  }
+
+  function position(starts, offset) {
+    let low = 0;
+    let high = starts.length;
+    while (low + 1 < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (starts[middle] <= offset) low = middle;
+      else high = middle;
+    }
+    return Object.freeze({ line: low + 1, column: offset - starts[low] + 1 });
+  }
+
+  function findingMetadata(candidates, starts) {
+    return Object.freeze(candidates.map(function (candidate, index) {
+      const detector = candidate.detector;
+      return Object.freeze({ id: "finding-" + (index + 1), ruleId: detector.id,
+        category: detector.category, control: detector.control, severity: detector.severity,
+        reason: detector.reason, description: detector.description,
+        certainty: detector.certainty, replacementPolicy: detector.replacementPolicy,
+        start: candidate.start, end: candidate.end,
+        position: position(starts, candidate.start), endPosition: position(starts, candidate.end),
+        replacement: detector.replacement, action: "REDACT", allowKeep: detector.allowKeep });
+    }));
+  }
+
+  function applyFindings(source, findings) {
+    const pieces = [];
+    let cursor = 0;
+    findings.forEach(function (finding) {
+      pieces.push(source.slice(cursor, finding.start), finding.replacement);
+      cursor = finding.end;
+    });
+    pieces.push(source.slice(cursor));
+    return pieces.join("");
+  }
+
+  function createReview(input, options) {
+    let source = checkInput(input);
+    const starts = lineStarts(source);
+    const findings = findingMetadata(resolve(collect(source, options || {})), starts);
+    const report = Object.freeze({ engineVersion: 2, profile: "legacy", format: "text",
+      inputLength: source.length, inputLines: starts.length, totalFindings: findings.length,
+      redacted: findings.length, kept: 0, findings: findings });
+    let active = true;
+    return Object.freeze({ findings: findings, report: report,
+      apply: function () {
+        if (!active) fail("REVIEW_CLEARED");
+        return { sanitized: applyFindings(source, findings), findings: findings, report: report };
+      },
+      clear: function () { source = ""; active = false; }
+    });
+  }
+
+  function analyze(input, options) {
+    const review = createReview(input, options);
+    const analysis = { findings: review.findings, report: review.report };
+    review.clear();
+    return analysis;
+  }
+
+  function sanitize(input, options) {
+    const source = checkInput(input);
+    const review = createReview(source, options);
+    const applied = review.apply();
+    const matches = applied.findings.map(function (finding) {
+      return { category: finding.category, text: source.slice(finding.start, finding.end), index: finding.start };
+    });
+    review.clear();
+    return { original: source, sanitized: applied.sanitized, matches: matches,
+      categories: Array.from(new Set(matches.map(function (match) { return match.category; }))).sort(),
+      redactionCount: matches.length };
   }
 
   return {
     sanitize: sanitize,
+    analyze: analyze,
+    createReview: createReview,
+    inspectDetectors: function () { return DETECTORS; },
+    getCapabilities: function () { return LIMITS; },
     isValidIpv4: isValidIpv4,
     isLoopbackIpv4: isLoopbackIpv4,
     REDACTION_LABELS: REDACTION_LABELS
