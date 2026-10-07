@@ -10,6 +10,17 @@ Detection is deterministic and rule-based (no ML, no remote judge). It is
 best-effort: unknown secret formats can be missed, so human review is required
 before sharing.
 
+## Hosted demo
+
+https://mighiana.github.io/SafePaste/ — published by `.github/workflows/pages.yml`
+from `main` (app files only: `index.html`, `styles.css`, `app.js`, `src/`).
+GitHub Pages only serves the static files; pasted text is still analyzed in the
+browser and never sent anywhere (`connect-src 'none'`). As with any website,
+GitHub sees the page request itself. Pages cannot send response headers, so the
+meta CSP applies and `frame-ancestors` is not enforced there; use
+`node evals/static-server.js` for header-level protection. Use synthetic data in
+the public demo.
+
 ## Provenance: academic base and later extension
 
 | | Academic base version | Later security/privacy engineering extension |
