@@ -96,6 +96,8 @@
     byId("policy-details").textContent = JSON.stringify(policy, null, 2);
     byId("policy-warning").textContent = policy.description +
       " Unsupported or unknown sensitive formats may remain. Human review required." +
+      (policy.name === "legacy"
+        ? " Compatibility omits preserved IPv4 from findings/preview masking; use an explicit profile to review those addresses." : "") +
       (policy.name === "support" || policy.name === "incident" || policy.name === "custom"
         ? " Preserved values may be unsuitable for public sharing." : "");
   }

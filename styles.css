@@ -11,8 +11,8 @@
 
   --text-primary: #172033;
   --text-secondary: #334256;
-  --text-muted: #607188;
-  --text-faint: #8494aa;
+  --text-muted: #526277;
+  --text-faint: #526277;
 
   --primary: #c66a1d;
   --primary-hover: #9a4f12;
@@ -744,8 +744,8 @@ textarea,
   font-size: 0.82rem;
   line-height: 1.65;
   outline: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  word-break: normal;
 }
 
 textarea {
