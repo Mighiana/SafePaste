@@ -174,8 +174,8 @@ const tests = [
 
   test("redacts Slack-style tokens", () => {
     const result = assertRedacted(
-      "slack=FAKE_SLACK_TOKEN_FOR_TESTING",
-      "FAKE_SLACK_TOKEN_FOR_TESTING",
+      "slack=xoxb-SYNTHETIC-TEST-ONLY-0000000000",
+      "xoxb-SYNTHETIC-TEST-ONLY-0000000000",
       REDACTION_LABELS.SLACK_TOKEN,
       "Slack token"
     );

@@ -435,7 +435,7 @@
     "layer": "product",
     "category": "authentication/token",
     "stakeholder_user_type": "Security / compliance team",
-    "input": "slack=FAKE_SLACK_TOKEN_FOR_TESTING",
+    "input": "slack=xoxb-SYNTHETIC-TEST-ONLY-0000000000",
     "expected_behavior": "Redact recognizable Slack-style token.",
     "mapped_spec_requirement": "R5",
     "justification": "Recognizable platform tokens should be removed when detected.",
@@ -443,7 +443,7 @@
     "notes": "",
     "checks": {
       "notContains": [
-        "FAKE_SLACK_TOKEN_FOR_TESTING"
+        "xoxb-SYNTHETIC-TEST-ONLY-0000000000"
       ],
       "contains": [
         "slack=",
