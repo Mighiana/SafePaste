@@ -60,10 +60,7 @@
       {
         category: "AUTHORIZATION_HEADER",
         label: REDACTION_LABELS.AUTHORIZATION_HEADER,
-        pattern: /\b(Authorization\s*:\s*)(?:(?:Bearer|Basic|Token)\s+)?[A-Za-z0-9._~+/=-]{8,}/gi,
-        replacement: function (match, prefix) {
-          return prefix + REDACTION_LABELS.AUTHORIZATION_HEADER;
-        }
+        pattern: /\b(Authorization\s*:\s*)(?:(?:Bearer|Basic|Token)\s+)?[A-Za-z0-9._~+/=-]{8,}/gi
       },
       {
         category: "BEARER_TOKEN",
@@ -88,26 +85,17 @@
       {
         category: "API_KEY",
         label: REDACTION_LABELS.API_KEY,
-        pattern: /((?:["']?)\b(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9._~+/=-]{12,})(\2)/gi,
-        replacement: function (match, prefix, quoteStart, secret, quoteEnd) {
-          return prefix + quoteStart + REDACTION_LABELS.API_KEY + quoteEnd;
-        }
+        pattern: /((?:["']?)\b(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9._~+/=-]{12,})(\2)/gi
       },
       {
         category: "SECRET",
         label: REDACTION_LABELS.SECRET,
-        pattern: /((?:["']?)\bsecret\b(?:["']?)\s*[:=]\s*)(["']?)([^"'\s,;}{]{3,})(\2)/gi,
-        replacement: function (match, prefix, quoteStart, secret, quoteEnd) {
-          return prefix + quoteStart + REDACTION_LABELS.SECRET + quoteEnd;
-        }
+        pattern: /((?:["']?)\bsecret\b(?:["']?)\s*[:=]\s*)(["']?)([^"'\s,;}{]{3,})(\2)/gi
       },
       {
         category: "PASSWORD",
         label: REDACTION_LABELS.PASSWORD,
-        pattern: /((?:["']?)\b(?:password|passwd)\b(?:["']?)\s*[:=]\s*)(["']?)([^"'\s,;}{]{3,})(\2)/gi,
-        replacement: function (match, prefix, quoteStart, secret, quoteEnd) {
-          return prefix + quoteStart + REDACTION_LABELS.PASSWORD + quoteEnd;
-        }
+        pattern: /((?:["']?)\b(?:password|passwd)\b(?:["']?)\s*[:=]\s*)(["']?)([^"'\s,;}{]{3,})(\2)/gi
       },
       {
         category: "EMAIL",
@@ -117,33 +105,12 @@
       {
         category: "USERNAME",
         label: REDACTION_LABELS.USERNAME,
-        pattern: /((?:["']?)\b(?:username|user[_-]?name|user)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9][A-Za-z0-9._-]{2,63})(\2)(?=$|[\s,;}\]])/gi,
-        candidate: function (args) {
-          return args[3];
-        },
-        indexOffset: function (args) {
-          return args[1].length + args[2].length;
-        },
-        replacement: function (match, prefix, quoteStart, username, quoteEnd) {
-          return prefix + quoteStart + REDACTION_LABELS.USERNAME + quoteEnd;
-        }
+        pattern: /((?:["']?)\b(?:username|user[_-]?name|user)\b(?:["']?)\s*[:=]\s*)(["']?)([A-Za-z0-9][A-Za-z0-9._-]{2,63})(\2)(?=$|[\s,;}\]])/gi
       },
       {
         category: "PATH_OR_USERNAME",
         label: REDACTION_LABELS.PATH_OR_USERNAME,
-        pattern: /(^|[^A-Za-z0-9/\\._-])((?:[A-Za-z]:\\Users\\|\/home\/|\/Users\/)([A-Za-z0-9._-]+)([^\s"'<>]*))/g,
-        candidate: function (args) {
-          return args[2];
-        },
-        indexOffset: function (args) {
-          return args[1].length;
-        },
-        replacement: function (match, prefix, pathValue) {
-          if (pathValue.indexOf("\\") !== -1) {
-            return prefix + pathValue.replace(/^([A-Za-z]:\\Users\\)[A-Za-z0-9._-]+/, "$1" + REDACTION_LABELS.USERNAME);
-          }
-          return prefix + pathValue.replace(/^((?:\/home\/|\/Users\/))[A-Za-z0-9._-]+/, "$1" + REDACTION_LABELS.USERNAME);
-        }
+        pattern: /(^|[^A-Za-z0-9/\\._-])((?:[A-Za-z]:\\Users\\|\/home\/|\/Users\/)([A-Za-z0-9._-]+)([^\s"'<>]*))/g
       }
     ];
 
@@ -152,16 +119,7 @@
         category: "IP_ADDRESS",
         label: REDACTION_LABELS.IP_ADDRESS,
         pattern: /(^|[^A-Za-z0-9_.-])((?:\d{1,3}\.){3}\d{1,3})(?=$|[^A-Za-z0-9_.-]|\.(?=$|[\s"')\]}]))/g,
-        candidate: function (args) {
-          return args[2];
-        },
-        indexOffset: function (args) {
-          return args[1].length;
-        },
-        validator: isRedactableIpv4,
-        replacement: function (match, prefix) {
-          return prefix + REDACTION_LABELS.IP_ADDRESS;
-        }
+        validator: isRedactableIpv4
       });
     }
 
@@ -206,6 +164,207 @@
     return source;
   }
 
+  function readQuoted(source, start, json) {
+    const quote = source[start];
+    let index = start + 1;
+    const parts = [];
+    const starts = [];
+    const ends = [];
+    while (index < source.length) {
+      const origin = index;
+      let character = source[index++];
+      if (character === quote) return { start: start + 1, end: index - 1, next: index,
+        value: parts.join(""), starts: starts, ends: ends, quoted: true };
+      if (json && character.charCodeAt(0) < 32) fail("JSON_SYNTAX");
+      if (!json && (character === "\n" || character === "\r")) fail("FIELD_SYNTAX");
+      if (character === "\\" && (json || quote !== "'")) {
+        const escaped = source[index++];
+        const escapes = { '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" };
+        if (json && escaped === "u") {
+          const hex = source.slice(index, index + 4);
+          if (!/^[0-9a-f]{4}$/i.test(hex)) fail("JSON_SYNTAX");
+          character = String.fromCharCode(parseInt(hex, 16));
+          index += 4;
+        } else if (Object.prototype.hasOwnProperty.call(escapes, escaped)) {
+          character = escapes[escaped];
+        } else if (json) {
+          fail("JSON_SYNTAX");
+        } else {
+          // Unknown logfmt/env escapes stay literal (notably Windows paths).
+          character = "\\" + (escaped || "");
+        }
+      }
+      for (let part = 0; part < character.length; part += 1) {
+        parts.push(character[part]); starts.push(origin); ends.push(index);
+      }
+    }
+    fail(json ? "JSON_SYNTAX" : "FIELD_SYNTAX");
+  }
+
+  function parseJson(source) {
+    let index = 0;
+    const units = [];
+    function whitespace() { while (/[\x20\t\r\n]/.test(source[index] || "X")) index += 1; }
+    function add(unit, key, isKey) {
+      if (units.length >= LIMITS.maxFields) fail("FIELD_LIMIT");
+      unit.key = key;
+      unit.isKey = isKey;
+      units.push(unit);
+    }
+    function value(key, depth) {
+      whitespace();
+      const character = source[index];
+      if (character === '"') {
+        const unit = readQuoted(source, index, true);
+        index = unit.next; add(unit, key, false); return;
+      }
+      if (character === "{" || character === "[") {
+        if (depth >= LIMITS.maxJsonDepth) fail("DEPTH_LIMIT");
+        const object = character === "{";
+        const close = object ? "}" : "]";
+        index += 1; whitespace();
+        if (source[index] === close) { index += 1; return; }
+        while (index < source.length) {
+          let childKey = null;
+          if (object) {
+            if (source[index] !== '"') fail("JSON_SYNTAX");
+            const keyUnit = readQuoted(source, index, true);
+            index = keyUnit.next; childKey = keyUnit.value; add(keyUnit, null, true);
+            whitespace();
+            if (source[index++] !== ":") fail("JSON_SYNTAX");
+          }
+          value(childKey, depth + 1); whitespace();
+          if (source[index] === close) { index += 1; return; }
+          if (source[index++] !== ",") fail("JSON_SYNTAX");
+          whitespace();
+        }
+        fail("JSON_SYNTAX");
+      }
+      const start = index;
+      while (index < source.length && !/[\s,}\]]/.test(source[index])) index += 1;
+      const token = source.slice(start, index);
+      if (!/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(token)) fail("JSON_SYNTAX");
+      add({ start: start, end: index, value: token, quoted: false }, key, false);
+    }
+    value(null, 0); whitespace();
+    if (index !== source.length) fail("JSON_SYNTAX");
+    return units;
+  }
+
+  function parseFields(source, format) {
+    const units = [];
+    const assignments = /(?:^|[\s,;])(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]{0,63})[ \t]*=[ \t]*/g;
+    const headers = /(?:^|[\r\n])([A-Za-z][A-Za-z0-9_-]{0,63})[ \t]*:[ \t]*/g;
+    function add(unit, key) {
+      if (units.length >= LIMITS.maxFields) fail("FIELD_LIMIT");
+      unit.key = key; units.push(unit);
+    }
+    function scan(pattern, header) {
+      let match;
+      while ((match = pattern.exec(source)) !== null) {
+        const start = pattern.lastIndex;
+        let unit;
+        if (!header && (source[start] === '"' || source[start] === "'")) {
+          try { unit = readQuoted(source, start, false); }
+          catch (error) { if (error.code !== "FIELD_SYNTAX") throw error; continue; }
+          pattern.lastIndex = unit.next;
+        } else {
+          let end = start;
+          const fullLine = header || format === "env";
+          while (end < source.length && (fullLine ? !/[\r\n]/.test(source[end]) : !/[\s,;]/.test(source[end]))) {
+            if (!header && fullLine && source[end] === "#" && (end === start || /[ \t]/.test(source[end - 1]))) break;
+            end += 1;
+          }
+          while (end > start && /[ \t]/.test(source[end - 1])) end -= 1;
+          unit = { start: start, end: end, value: source.slice(start, end), quoted: false };
+          pattern.lastIndex = Math.max(pattern.lastIndex, end);
+        }
+        add(unit, match[1]);
+      }
+    }
+    if (format !== "headers") scan(assignments, false);
+    if (format !== "env" && format !== "logfmt") scan(headers, true);
+    units.sort(function (a, b) { return a.start - b.start || b.end - a.end; });
+    let coveredEnd = -1;
+    return units.filter(function (unit) {
+      if (unit.start < coveredEnd) return false;
+      coveredEnd = unit.end;
+      return true;
+    });
+  }
+
+  function parseInput(source, requested) {
+    if (["auto", "text", "json", "env", "headers", "logfmt"].indexOf(requested) === -1) fail("UNKNOWN_FORMAT");
+    let format = requested;
+    if (format === "auto") {
+      const trimmed = source.trimStart();
+      if (/^[{[\"]/.test(trimmed)) format = "json";
+      else {
+        const lines = source.split(/\r\n|[\r\n]/).filter(function (line) { return line.trim() && !/^\s*#/.test(line); });
+        if (lines.length && lines.every(function (line) { return /^(?:export[ \t]+)?[A-Za-z_][\w.-]{0,63}[ \t]*=[ \t]*(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'#]*)(?:[ \t]+#[^\r\n]*)?[ \t]*$/.test(line); })) format = "env";
+        else if (lines.length && lines.every(function (line) { return /^[A-Za-z][\w-]{0,63}[ \t]*:/.test(line); })) format = "headers";
+        else if (/(?:^|\s)[A-Za-z_][\w.-]{0,63}[ \t]*=/.test(source)) format = "logfmt";
+        else format = "text";
+      }
+    }
+    if (format === "json") {
+      try { return { format: format, status: "parsed", units: parseJson(source) }; }
+      catch (error) {
+        if (error.code !== "JSON_SYNTAX") throw error;
+        return { format: "text", status: "malformed-json-fallback", units: parseFields(source, "text") };
+      }
+    }
+    return { format: format, status: format === "text" ? "text" : "parsed",
+      units: requested === "text" ? [] : parseFields(source, format) };
+  }
+
+  function explicitCategory(key) {
+    if (!key) return null;
+    if (/^(?:api[_-]?key|access[_-]?token|secret[_-]?key|client[_-]?secret)$/i.test(key)) return "API_KEY";
+    if (/^(?:password|passwd)$/i.test(key)) return "PASSWORD";
+    if (/^secret$/i.test(key)) return "SECRET";
+    if (/^(?:username|user[_-]?name|user)$/i.test(key)) return "USERNAME";
+    if (/^authorization$/i.test(key)) return "AUTHORIZATION_HEADER";
+    return null;
+  }
+
+  function diagnosticKey(key) {
+    return /^(?:version|release|app[_-]?version|software[_-]?version|request[_-]?id|trace[_-]?id|build[_-]?id)$/i.test(key || "");
+  }
+
+  function collectParsed(source, options, parsed) {
+    const units = parsed.units;
+    function overlapsUnit(candidate) {
+      let low = 0; let high = units.length;
+      while (low < high) {
+        const middle = Math.floor((low + high) / 2);
+        if (units[middle].end <= candidate.start) low = middle + 1;
+        else high = middle;
+      }
+      return low < units.length && units[low].start <= candidate.start && units[low].end >= candidate.end;
+    }
+    const candidates = parsed.format === "json" ? [] : collect(source, options).filter(function (candidate) { return !overlapsUnit(candidate); });
+    units.forEach(function (unit) {
+      function add(start, end, detector) {
+        if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
+        candidates.push({ start: unit.starts ? unit.starts[start] : unit.start + start,
+          end: unit.ends ? unit.ends[end - 1] : unit.start + end, detector: detector,
+          replacement: parsed.format === "json" && !unit.quoted ? JSON.stringify(detector.replacement) : detector.replacement });
+      }
+      const category = explicitCategory(unit.key);
+      const minimum = category === "API_KEY" ? 12 : category === "AUTHORIZATION_HEADER" ? 8 : 3;
+      const validIdentity = category !== "USERNAME" || /^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/.test(unit.value);
+      if (category && validIdentity && unit.value.length >= minimum && !(parsed.format === "json" && unit.value === "null" && !unit.quoted)) {
+        add(0, unit.value.length, BY_CATEGORY[category]);
+      }
+      collect(unit.value, options).forEach(function (candidate) {
+        if (candidate.detector.category === "IP_ADDRESS" && diagnosticKey(unit.key)) return;
+        add(candidate.start, candidate.end, candidate.detector);
+      });
+    });
+    return candidates;
+  }
+
   function collect(source, options) {
     const candidates = [];
     buildRules(options).forEach(function (rule) {
@@ -243,9 +402,13 @@
       const previous = resolved[resolved.length - 1];
       if (previous && candidate.start < previous.end) {
         previous.end = Math.max(previous.end, candidate.end);
-        if (candidate.detector.priority > previous.detector.priority) previous.detector = candidate.detector;
+        if (candidate.detector.priority > previous.detector.priority) {
+          previous.detector = candidate.detector;
+          previous.replacement = candidate.replacement;
+        }
       } else {
-        resolved.push({ start: candidate.start, end: candidate.end, detector: candidate.detector });
+        resolved.push({ start: candidate.start, end: candidate.end, detector: candidate.detector,
+          replacement: candidate.replacement });
       }
     });
     return resolved;
@@ -282,7 +445,7 @@
         certainty: detector.certainty, replacementPolicy: detector.replacementPolicy,
         start: candidate.start, end: candidate.end,
         position: position(starts, candidate.start), endPosition: position(starts, candidate.end),
-        replacement: detector.replacement, action: "REDACT", allowKeep: detector.allowKeep });
+        replacement: candidate.replacement || detector.replacement, action: "REDACT", allowKeep: detector.allowKeep });
     }));
   }
 
@@ -300,8 +463,10 @@
   function createReview(input, options) {
     let source = checkInput(input);
     const starts = lineStarts(source);
-    const findings = findingMetadata(resolve(collect(source, options || {})), starts);
-    const report = Object.freeze({ engineVersion: 2, profile: "legacy", format: "text",
+    const settings = options || {};
+    const parsed = parseInput(source, settings.format || "auto");
+    const findings = findingMetadata(resolve(collectParsed(source, settings, parsed)), starts);
+    const report = Object.freeze({ engineVersion: 3, profile: "legacy", format: parsed.format, parseStatus: parsed.status,
       inputLength: source.length, inputLines: starts.length, totalFindings: findings.length,
       redacted: findings.length, kept: 0, findings: findings });
     let active = true;

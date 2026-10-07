@@ -37,7 +37,50 @@ The free-text version lookbehind is bounded to 160 code units; unusually distant
 prose context may be redacted conservatively. Email components are bounded to
 avoid unbounded repeated scans of hostile dotted input.
 
+## Structured parsing (phase 3)
+
+`options.format` is `auto` (default), `text`, `json`, `env`, `headers`, or
+`logfmt`. Auto recognizes JSON containers/quoted scalars, complete assignment
+lines, header lines, then mixed key=value logs. Explicit `env` handles unquoted
+values with spaces. Ambiguous mixed prose defaults to narrow token scanning,
+not semantic inference. Explicit `text` uses only the original text detectors.
+YAML, NDJSON, and general embedded JSON extraction are not implemented.
+
+JSON parsing validates grammar and bounds nesting before detection. Escaped
+keys are recognized; decoded value characters map to original source spans
+(including Unicode escapes, escaped quotes, backslashes and surrogate units).
+All string keys/values and scalar values are scanned, without reserialization.
+Duplicate keys and original spacing/order remain. Numeric/boolean credential
+replacements are quoted so valid JSON stays valid; consumers must tolerate
+that type change. Null/empty values are not treated as credentials. Redacting
+object keys can collapse distinct keys; this is best-effort sharing output,
+not an unchanged application data structure.
+
+Supported field aliases remain narrow: password/passwd; api_key/access_token/
+secret_key/client_secret (optional underscores/hyphens); secret; username/
+user_name/user; authorization. Explicit credentials consume the full parsed
+scalar, including spaces/escaping, rather than leaking a partial value.
+Username syntax remains the existing 3–64-character account-identifier syntax;
+emails in user fields remain email findings. Arrays/objects directly under a
+secret-named key are not wholly redacted as a unit. Unknown names/secret formats
+and general natural-language identities remain limitations.
+
+Version/release/app_version/software_version and request_id/trace_id/build_id
+fields preserve only IPv4-shaped diagnostic values; they do not exempt emails
+or tokens. Arbitrary free-text IDs receive no blanket exemption. `PWD` remains
+a path context, not a password alias. HTTP headers and quoted logfmt/env values
+are scanned as scalar units; comments/layout/line separators remain intact.
+Single-quoted env values are literal; common double-quoted/logfmt escapes are
+decoded, with unknown escapes retained literally for Windows paths. This is a
+bounded lexical parser, not a shell evaluator (no expansion or multiline env).
+
+`report.format` and `report.parseStatus` show parser selection. Malformed JSON
+falls back to text/assignment detection with `malformed-json-fallback`; escaped
+bypasses in malformed JSON may be missed. Unterminated quoted fields fall back
+to raw text rules. Limits count parsed scalar units, including JSON keys.
+
 Errors have stable `code` values and no input excerpts: `INPUT_LIMIT`,
-`FINDING_LIMIT`, `REVIEW_CLEARED`. No partial output is returned on an error.
+`FINDING_LIMIT`, `FIELD_LIMIT`, `DEPTH_LIMIT`, `UNKNOWN_FORMAT`,
+`REVIEW_CLEARED`. No partial output is returned on a limit/option error.
 Inspect metadata before a human explicitly chooses to share output; deterministic
 rules do not guarantee detection of unknown secrets.
