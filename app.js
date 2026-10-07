@@ -47,7 +47,10 @@
   let reader = null;
   let copyTimer = null;
   let copied = false;
-  const profileNames = { legacy: "Compatibility", strict: "Strict", support: "Support", incident: "Incident", custom: "Custom" };
+  let undoOverrides = null;
+  const hideAll = byId("hide-all");
+  const undoHide = byId("undo-hide");
+  const profileNames = { legacy: "Default", strict: "Strict", support: "Support", incident: "Incident", custom: "Custom" };
   const objectUrls = new Set();
 
   const samples = {
@@ -110,8 +113,8 @@
     byId("preserve-loopback").disabled = !redactNetwork;
     byId("preserve-private").disabled = !redactNetwork;
     byId("policy-details").textContent = JSON.stringify(policy, null, 2);
-    byId("settings-summary").textContent = (profileNames[profile.value] || profile.value) + " · " +
-      (mode.value === "pseudonymization" ? "Pseudonyms" : "Redaction");
+    byId("settings-summary").textContent = (profileNames[profile.value] || profile.value) + " rules · " +
+      (mode.value === "pseudonymization" ? "replaces with [EMAIL_1]" : "hides as [REDACTED]");
     byId("policy-warning").textContent = policy.description +
       " Unsupported or unknown sensitive formats may remain. Human review required." +
       (policy.name === "legacy"
@@ -164,17 +167,24 @@
     cancelButton.hidden = !busy;
     cancelButton.disabled = !busy;
     findingControls.forEach(function (control) { control.disabled = busy; });
+    renderBulk();
     if (busy) {
-      copy.disabled = true;
-      logDownload.disabled = true;
-      reportDownload.disabled = true;
+      disableExports("Wait for the current run to finish");
     }
+  }
+
+  function disableExports(reason) {
+    copy.disabled = true;
+    logDownload.disabled = true;
+    reportDownload.disabled = true;
+    copy.title = reason;
   }
 
   function enableExports() {
     copy.disabled = !result.sanitized.length;
     logDownload.disabled = !result.sanitized.length;
     reportDownload.disabled = false;
+    copy.title = copy.disabled ? "Nothing to copy" : "";
   }
 
   function startWorker(assumeReady) {
@@ -287,6 +297,109 @@
       ? result.report.redacted + " redacted · " + result.report.kept + " kept" : "No current review";
     cursorStatus();
     byId("flow-steps").setAttribute("data-stage", result ? (copied ? "copy" : "review") : input.value ? "sanitize" : "paste");
+    renderState();
+  }
+
+  // Empty, clean and found states share one switch so idle screens never show result chrome.
+  function renderState() {
+    const state = !result ? "empty" : result.findings.length ? "found" : "clean";
+    byId("summary").setAttribute("data-state", state);
+    byId("findings-panel").setAttribute("data-state", state);
+    byId("output-empty").hidden = Boolean(result);
+    byId("preview-help").hidden = !result;
+    byId("export-hint").hidden = Boolean(result);
+    byId("sanitize-button").classList.toggle("is-done", Boolean(result));
+    const warning = byId("review-warning");
+    warning.hidden = !result;
+    warning.classList.toggle("is-clean", state === "clean");
+    byId("review-warning-text").textContent = state === "clean"
+      ? "Nothing detected. Still skim it before sharing."
+      : "Always check before sharing. Unknown secrets can slip through.";
+  }
+
+  function keptFindings() {
+    return result ? result.findings.filter(function (finding) { return finding.allowKeep && finding.action === "KEEP"; }) : [];
+  }
+
+  function renderBulk() {
+    const kept = keptFindings().length;
+    hideAll.hidden = !kept;
+    hideAll.disabled = Boolean(pendingJob);
+    hideAll.textContent = kept ? "Hide all (" + kept + " kept)" : "Hide all";
+    undoHide.hidden = !undoOverrides;
+    undoHide.disabled = Boolean(pendingJob);
+  }
+
+  // Output offsets follow from input spans: earlier applied replacements shift later ones.
+  function outputRange(target) {
+    let shift = 0;
+    result.findings.forEach(function (finding) {
+      if (finding.end <= target.start && finding.action !== "KEEP") shift += finding.replacement.length - (finding.end - finding.start);
+    });
+    const start = target.start + shift;
+    const end = start + (target.action === "KEEP" ? target.end - target.start : target.replacement.length);
+    if (target.action !== "KEEP" && result.sanitized.slice(start, end) !== target.replacement) return null;
+    return { start: start, end: end };
+  }
+
+  function jumpTo(finding) {
+    if (!currentReview()) return;
+    const current = result.findings.find(function (entry) { return entry.id === finding.id; }) || finding;
+    setView(false);
+    const range = outputRange(current);
+    const before = range ? result.sanitized.slice(0, range.start) : "";
+    const line = range ? lineCount(before + "x") : current.position.line;
+    output.focus();
+    if (range && typeof output.setSelectionRange === "function") {
+      output.setSelectionRange(range.start, range.end);
+      const style = typeof window.getComputedStyle === "function" ? window.getComputedStyle(output) : null;
+      const lineHeight = style ? parseFloat(style.lineHeight) || 21 : 21;
+      const charWidth = style ? (parseFloat(style.fontSize) || 13) * 0.6 : 8;
+      output.scrollTop = Math.max(0, (line - 3) * lineHeight);
+      const column = range.start - before.lastIndexOf("\n") - 1;
+      output.scrollLeft = Math.max(0, column * charWidth - 80);
+    }
+    if (typeof output.scrollIntoView === "function") output.scrollIntoView({ block: "nearest" });
+    status.textContent = "Selected " + current.category.replace(/_/g, " ").toLowerCase() + " on line " + line +
+      " of the sanitized text" + (current.action === "KEEP" ? " (kept, so the original value is shown there)." : ".");
+  }
+
+  function applyOverrides(next, after) {
+    const finish = function (decidedResult) {
+      result = decidedResult;
+      overrides = next;
+      generation += 1;
+      revokeDownloads();
+      copied = false;
+      renderReport();
+      setView(showPreview);
+      resetCopy();
+      enableExports();
+      after();
+      renderBulk();
+    };
+    if (reviewInWorker) {
+      // Later decisions build on this one; only the newest worker reply is applied.
+      overrides = next;
+      status.textContent = "Applying review decision locally… Exports are paused.";
+      post("apply", { overrides: next }, function (data) { finish(data.result); });
+      return;
+    }
+    try {
+      finish(review.apply(next));
+    } catch (error) {
+      failReview(error);
+    }
+  }
+
+  function bulkApply(next, previous, message) {
+    if (!currentReview()) return;
+    applyOverrides(next, function () {
+      undoOverrides = previous;
+      renderFindings();
+      status.textContent = message;
+      if (previous) undoHide.focus(); else hideAll.focus();
+    });
   }
 
   function whyFinding(finding) {
@@ -371,7 +484,7 @@
       preview.textContent = "Your visual redaction preview appears here.";
       return;
     }
-    const pattern = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC)_[1-9][0-9]{0,9})\]/g;
+    const pattern = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC|HOST)_[1-9][0-9]{0,9})\]/g;
     const cut = previewCut(pattern);
     const visible = maskedOutput.slice(0, cut);
     let cursor = 0;
@@ -459,9 +572,12 @@
       badge.textContent = finding.severity.toUpperCase();
       const name = document.createElement("span");
       name.textContent = " " + finding.category.replace(/_/g, " ") + " ";
-      const where = document.createElement("span");
+      const where = document.createElement("button");
+      where.type = "button";
       where.className = "finding-where";
       where.textContent = "Line " + finding.position.line + ", Col " + finding.position.column;
+      where.setAttribute("aria-label", "Show " + finding.id + " in the sanitized text, line " + finding.position.line);
+      where.addEventListener("click", function () { jumpTo(finding); });
       heading.appendChild(badge);
       heading.appendChild(name);
       heading.appendChild(where);
@@ -504,33 +620,13 @@
           }
           const next = Object.assign({}, overrides);
           next[finding.id] = control.value;
-          const decide = function (decidedResult) {
-            result = decidedResult;
-            overrides = next;
-            generation += 1;
-            revokeDownloads();
+          undoOverrides = null;
+          applyOverrides(next, function () {
             const decided = result.findings.find(function (entry) { return entry.id === finding.id; });
             detail.textContent = "→ " + decided.replacement;
             whyText.textContent = whyFinding(decided);
-            copied = false;
-            renderReport();
-            setView(showPreview);
-            resetCopy();
-            enableExports();
             status.textContent = "Review decision applied locally. KEEP can expose values in Copy/download; Preview stays masked. Human review required.";
-          };
-          if (reviewInWorker) {
-            // Later decisions build on this one; only the newest worker reply is applied.
-            overrides = next;
-            status.textContent = "Applying review decision locally… Exports are paused.";
-            post("apply", { overrides: next }, function (data) { decide(data.result); });
-            return;
-          }
-          try {
-            decide(review.apply(next));
-          } catch (error) {
-            failReview(error);
-          }
+          });
         });
         label.appendChild(control);
         item.appendChild(label);
@@ -543,6 +639,8 @@
       }
       list.appendChild(item);
     });
+    byId("findings-pager").hidden = findings.length <= pageSize;
+    renderBulk();
     byId("findings-previous").disabled = page === 0;
     byId("findings-next").disabled = (page + 1) * pageSize >= findings.length;
     byId("findings-page").textContent = findings.length
@@ -564,12 +662,11 @@
     reviewedOptions = null;
     maskedOutput = "";
     overrides = {};
+    undoOverrides = null;
     page = 0;
     resetCopy();
     revokeDownloads();
-    copy.disabled = true;
-    logDownload.disabled = true;
-    reportDownload.disabled = true;
+    disableExports("Sanitize first");
     renderPreview();
     renderCategories([]);
     renderReport();
@@ -804,6 +901,19 @@
     byId("file-input").value = "";
     loadFile(file);
   });
+  hideAll.addEventListener("click", function () {
+    const kept = keptFindings();
+    if (!kept.length || !currentReview()) return;
+    const next = Object.assign({}, overrides);
+    kept.forEach(function (finding) { next[finding.id] = "REDACT"; });
+    bulkApply(next, Object.assign({}, overrides), "Hid " + kept.length + (kept.length === 1 ? " kept value" : " kept values") +
+      " locally. Undo is available. Human review required.");
+  });
+  undoHide.addEventListener("click", function () {
+    if (!undoOverrides || !currentReview()) return;
+    bulkApply(undoOverrides, null, "Undid Hide all. Earlier Keep choices are back in Copy/download. Human review required.");
+  });
+  byId("empty-sample").addEventListener("click", function () { byId("sample-button").click(); });
   byId("sample-button").addEventListener("click", function () {
     const sample = samples[byId("sample-select").value];
     if (!sample || !confirmReplacement()) return;
@@ -846,6 +956,15 @@
   window.addEventListener("pageshow", function () {
     if (!worker) startWorker(false);
   });
+
+  const ruleNames = Array.from(new Set(engine.inspectDetectors().map(function (detector) { return detector.description; })));
+  byId("rule-catalog-summary").textContent = "All " + ruleNames.length + " rules";
+  ruleNames.forEach(function (name) {
+    const item = document.createElement("li");
+    item.textContent = name;
+    byId("rule-catalog").appendChild(item);
+  });
+  byId("engine-version").textContent = "Engine v" + capabilities.engineVersion;
 
   startWorker(false);
   inspectPolicy();

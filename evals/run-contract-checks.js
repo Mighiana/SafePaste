@@ -153,7 +153,7 @@ contract("module exports", () => {
   conform(engine.REDACTION_LABELS, new Map([["*", "string:nonempty"]]), "REDACTION_LABELS");
 });
 contract("getCapabilities()", () => {
-  conform(caps, Object.assign({}, LIMITS, { formats: { arrayOf: "string" }, modes: { arrayOf: "string" }, profiles: { arrayOf: "string" },
+  conform(caps, Object.assign({}, LIMITS, { engineVersion: "integer:positive", formats: { arrayOf: "string" }, modes: { arrayOf: "string" }, profiles: { arrayOf: "string" },
     controls: { arrayOf: "string" }, actions: { arrayOf: ACTIONS }, lockedCategories: { arrayOf: "string" }, maxOverrides: "integer:positive",
     largeLimits: LIMITS }), "capabilities");
 });

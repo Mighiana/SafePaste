@@ -21,7 +21,7 @@ before it is shared, without the log ever leaving the device.
 
 SafePaste is a dependency-free browser tool and CLI that detects credentials,
 tokens, private keys, identities and network identifiers in technical logs with
-26 deterministic, explainable rules. Users choose a privacy profile, review each
+27 deterministic, explainable rules. Users choose a privacy profile, review each
 finding (KEEP/REDACT where safe), optionally pseudonymize identifiers to keep
 relationships, and export sanitized text plus a metadata-only privacy report. It
 began as an academic Human-Centered AI project and was later extended into a
@@ -38,7 +38,7 @@ secret scanners require uploading the exact data that should stay private.
 
 - A shared UMD engine (`src/sanitizer.js`) used unchanged by the browser, a Web
   Worker and a Node CLI: format detection, bounded parsers (JSON, env, HTTP
-  headers, logfmt, embedded/NDJSON/truncated JSON), 26 catalogued detectors,
+  headers, logfmt, embedded/NDJSON/truncated JSON), 27 catalogued detectors,
   overlap resolution, a policy engine and a metadata-only privacy report.
 - Privacy profiles (Strict, Support, Security incident, Custom, plus the original
   academic Compatibility mode) with inspectable resolved policies.
@@ -112,15 +112,16 @@ UNTRUSTED LOG ─► [ USER DEVICE: format parser ─► detection engine ─►
 
 ## Testing / evaluation
 
-24 entry points, all passing (exit 0):
+25 entry points, all passing (exit 0):
 
 - Academic suites: unit 38/38, evals 73/73, exact-property grader 91/91 across 21
   cases, product red-team 15/15, UI smoke PASS, product behavior 5/5, accessibility
   static 18/18 (10 original + 8 added).
 - Extension suites: core 9/9, parsers 16/16, policies 22/22, hook PASS, review UI
-  (mocked DOM) 24/24, pseudonyms 6/6, detectors 14/14, static privacy 10/10 tests +
+  (mocked DOM) 28/28, pseudonyms 6/6, detectors 15/15, static privacy 10/10 tests +
   checker PASS, worker 10/10, CLI 9/9, benchmarks PASS (32 cases), regressions 10/10,
-  properties 11/11, corpora 144/144, extended red-team 46/46 matched, contract 20/20.
+  properties 11/11, corpora 144/144, extended red-team 46/46 matched, contract 20/20,
+  contrast 52/52 token pairs (WCAG AA, light + dark).
 - Synthetic corpora: true-positive 56/56, false-positive 22/22, ambiguous 9/9,
   adversarial 39/39 (23 detected, 16 recorded known misses), performance 18/18.
 
@@ -200,14 +201,14 @@ fixtures. Desktop screenshots are full-page at 1585 px width.
 | --- | --- | --- |
 | 1 | Main review workspace (Compatibility, web sample) | [01-review-workspace.png](evidence/01-review-workspace.png) |
 | 2 | Structured JSON sanitization (Strict, Cloud/API JSON) | [02-structured-json.png](evidence/02-structured-json.png) |
-| 3 | Findings review panel (locked PASSWORD finding) | [03-findings-panel.png](evidence/03-findings-panel.png) |
+| 3 | Findings review panel (Support .env sample, "Why?" open) | [03-findings-panel.png](evidence/03-findings-panel.png) |
 | 4 | Privacy profile selection (Custom, email kept) | [04-privacy-profiles.png](evidence/04-privacy-profiles.png) |
 | 5 | Pseudonymized output | [05-pseudonymized-output.png](evidence/05-pseudonymized-output.png) |
 | 6 | Privacy report (auth headers, locked Authorization) | [06-privacy-report.png](evidence/06-privacy-report.png) |
 | 7 | CLI usage (terminal) | [07-cli-usage.png](evidence/07-cli-usage.png) |
 | 8 | Evaluation / red-team results (terminal) | [08-eval-redteam-results.png](evidence/08-eval-redteam-results.png) |
 | 9 | Mobile 390 px (Security incident profile) | [09-mobile-390.png](evidence/09-mobile-390.png) |
-| 10 | 13 s muted VP9 WebM: load synthetic log, sanitize, masked view, findings, KEEP decision, report | [demo.webm](evidence/demo.webm) |
+| 10 | 15 s muted VP9 WebM: empty state, load synthetic log (Support), sanitize, masked view, KEEP decision, click a finding to select it in the output, Hide all, report | [demo.webm](evidence/demo.webm) |
 
 The browser pass found two issues, fixed before capture: finding REDACT/KEEP selects
 overflowed their cards at 390 px, and the Cloud/API sample's 9-character `api_key`

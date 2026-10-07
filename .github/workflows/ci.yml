@@ -39,6 +39,7 @@ jobs:
           node evals/run-ui-smoke.js
           node evals/run-product-behavior.js
           node evals/run-accessibility-checks.js
+          node tests/test-contrast.js
       - name: Engine, parser, policy, detector and UI tests
         run: |
           node tests/test-core.js

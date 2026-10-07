@@ -33,7 +33,8 @@
     WEBHOOK_SECRET: "[REDACTED_WEBHOOK_SECRET]",
     URL_QUERY_SECRET: "[REDACTED_URL_SECRET]",
     IPV6_ADDRESS: "[REDACTED_IPV6_ADDRESS]",
-    MAC_ADDRESS: "[REDACTED_MAC_ADDRESS]"
+    MAC_ADDRESS: "[REDACTED_MAC_ADDRESS]",
+    INTERNAL_HOSTNAME: "[REDACTED_INTERNAL_HOSTNAME]"
   };
 
   function isValidIpv4(candidate) {
@@ -142,6 +143,7 @@
     return rules;
   }
 
+  const ENGINE_VERSION = 9;
   const LIMITS = Object.freeze({ maxInputLength: 2097152, maxCandidates: 100000,
     maxJsonDepth: 64, maxFields: 50000 });
   // Opt-in session tier for the local worker and CLI; bounds are measured by evals/run-benchmarks.js.
@@ -173,7 +175,8 @@
     ["WEBHOOK_SECRET", "tokens", "high", "Webhook secret", "Secret path of a Slack, Discord or Microsoft Teams/Office 365 webhook URL", 90],
     ["URL_QUERY_SECRET", "tokens", "high", "URL secret parameter", "Explicit secret query parameter (token, signature, password...) in a URL", 75],
     ["IPV6_ADDRESS", "network", "review", "IPv6 address", "Validated RFC 4291 IPv6 text syntax; contextual policy required", 21],
-    ["MAC_ADDRESS", "network", "review", "MAC address", "Six hex octets with one consistent separator", 21]
+    ["MAC_ADDRESS", "network", "review", "MAC address", "Six hex octets with one consistent separator", 21],
+    ["INTERNAL_HOSTNAME", "network", "review", "Internal hostname", "Dotted hostname ending in a private-use suffix (.internal, .corp, .lan, .local, .localdomain, .intranet, .home.arpa)", 19]
   ];
   const DETECTORS = Object.freeze(DEFINITIONS.map(function (item) {
     return Object.freeze({ id: item[0].toLowerCase(), category: item[0], control: item[1],
@@ -189,7 +192,7 @@
   const PROFILE_NAMES = Object.freeze(["strict", "support", "incident", "custom"]);
   const FORMATS = Object.freeze(["auto", "text", "json", "env", "headers", "logfmt"]);
   const MODES = Object.freeze(["redaction", "pseudonymization"]);
-  const MARKER = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC)_[1-9][0-9]{0,9})\]/g;
+  const MARKER = /\[(?:REDACTED_[A-Z_]+|(?:EMAIL|USERNAME|PATH|IP|IPV6|MAC|HOST)_[1-9][0-9]{0,9})\]/g;
   const LEADING_MARKER = new RegExp("^" + MARKER.source);
 
   function existingMarker(value) {
@@ -581,7 +584,7 @@
       } else if (category && !existingMarker(unit.value) && validIdentity && validToken && unit.value.length >= minimum && !(parsed.format === "json" && unit.value === "null" && !unit.quoted)) {
         add(0, valueEnd, BY_CATEGORY[category]);
       }
-      collect(unit.value, options).forEach(function (candidate) {
+      collect(unit.value, options, HOST_KEY.test(unit.key || "")).forEach(function (candidate) {
         if (candidate.detector.control === "network" && diagnosticKey(unit.key)) return;
         add(candidate.start, candidate.end, candidate.detector, candidate.networkKind, candidate.value);
       });
@@ -841,6 +844,32 @@
     }
   }
 
+  // Private-use DNS suffixes only; public domains are not flagged. Reverse-DNS code names
+  // (com.acme.internal), code receivers (this.local) and dotted names inside paths (.env.local) are skipped,
+  // unless the name sits in a host position (Host:, //, \\UNC, user@).
+  const INTERNAL_SUFFIX = /(^|[^A-Za-z0-9_.-])((?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.){1,8}(?:internal|corp|lan|local|localdomain|intranet|home\.arpa))(?![A-Za-z0-9_-]|\.[A-Za-z0-9])/gi;
+  const REVERSE_DNS = /^(?:com|org|net|io|java|javax|jdk|sun|kotlin|android|androidx|scala)\./i;
+  const CODE_RECEIVER = /^(?:this|self|super|window|document|module|exports|props|state|ctx|obj)\./i;
+  const HOST_KEY = /(?:^|[^A-Za-z0-9])(?:host(?:name)?|server|fqdn|addr(?:ess)?|peer|upstream)$/i;
+  const HOST_CONTEXT = /(?:^|[^A-Za-z0-9])(?:host(?:name)?|server|fqdn|addr(?:ess)?|peer|upstream)["']?\s*[:=]\s*["']?$/i;
+
+  function scanInternalHosts(text, push, hostField) {
+    let match;
+    INTERNAL_SUFFIX.lastIndex = 0;
+    while ((match = INTERNAL_SUFFIX.exec(text)) !== null) {
+      const start = match.index + match[1].length;
+      const host = match[2];
+      const before = text[start - 1] || "";
+      const lead = text.slice(start - 2, start);
+      if ((before === "/" || before === "\\") && lead !== "//" && lead !== "\\\\") continue;
+      const hostContext = hostField || lead === "//" || lead === "\\\\" || before === "@" ||
+        HOST_CONTEXT.test(text.slice(Math.max(0, start - 24), start));
+      const codeName = CODE_RECEIVER.test(host) || (REVERSE_DNS.test(host) && host.split(".").length > 2);
+      if ((codeName && !hostContext) || /^\d+(?:\.\d+)*\.[a-z.]+$/i.test(host) || hasVersionFieldPrefix(text, start)) continue;
+      push(start, start + host.length, "INTERNAL_HOSTNAME", "internal-host", host.toLowerCase());
+    }
+  }
+
   function scanPrivateKeys(text, push) {
     const begin = /-----BEGIN ((?:RSA |DSA |EC |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?)-----/g;
     let match;
@@ -853,7 +882,7 @@
     }
   }
 
-  function collectExtended(text, options, push) {
+  function collectExtended(text, options, push, hostField) {
     let match;
     scanPrivateKeys(text, push);
     const github = /(^|[^A-Za-z0-9_])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59})(?![A-Za-z0-9_])/g;
@@ -878,10 +907,13 @@
     while ((match = cookie.exec(text)) !== null) scanCookies(text, cookie.lastIndex, /^set-/i.test(match[2]), push);
     scanConnectionStrings(text, push);
     scanUrls(text, push);
-    if (options.redactIpAddresses !== false) scanNetwork(text, options, push);
+    if (options.redactIpAddresses !== false) {
+      scanNetwork(text, options, push);
+      scanInternalHosts(text, push, hostField);
+    }
   }
 
-  function collect(source, options) {
+  function collect(source, options, hostField) {
     const candidates = [];
     function push(start, end, category, networkKind, value) {
       if (end <= start) return;
@@ -889,7 +921,7 @@
       candidates.push({ start: start, end: end, detector: BY_CATEGORY[category], networkKind: networkKind,
         value: value, contextual: !networkKind });
     }
-    collectExtended(source, options, push);
+    collectExtended(source, options, push, hostField);
     buildRules(options).forEach(function (rule) {
       let match;
       while ((match = rule.pattern.exec(source)) !== null) {
@@ -1041,7 +1073,7 @@
       else count.kept += 1;
     });
     CONTROLS.forEach(function (control) { Object.freeze(counts[control]); });
-    return Object.freeze({ engineVersion: 8, profile: policy.name, mode: policy.mode, policy: policy,
+    return Object.freeze({ engineVersion: ENGINE_VERSION, profile: policy.name, mode: policy.mode, policy: policy,
       format: analysis.format, parseStatus: analysis.parseStatus,
       inputLength: length, inputLines: analysis.inputLines, totalFindings: findings.length,
       redacted: redacted, kept: findings.length - redacted,
@@ -1071,7 +1103,7 @@
     const maps = new Map();
     const occupied = new Set();
     const names = { EMAIL: "EMAIL", USERNAME: "USERNAME", PATH_OR_USERNAME: "PATH", IP_ADDRESS: "IP",
-      IPV6_ADDRESS: "IPV6", MAC_ADDRESS: "MAC" };
+      IPV6_ADDRESS: "IPV6", MAC_ADDRESS: "MAC", INTERNAL_HOSTNAME: "HOST" };
     return {
       reserve: function (source) {
         for (const match of source.matchAll(new RegExp(MARKER.source, "g"))) {
@@ -1171,7 +1203,7 @@
     inspectPolicy: inspectPolicy,
     inspectPolicies: function () { return Object.freeze(PROFILE_NAMES.map(function (profile) { return inspectPolicy({ profile: profile }); })); },
     getCapabilities: function () { return Object.freeze(Object.assign({}, LIMITS,
-      { formats: FORMATS, modes: MODES, profiles: PROFILE_NAMES, controls: CONTROLS, actions: Object.freeze(["REDACT", "KEEP"]),
+      { engineVersion: ENGINE_VERSION, formats: FORMATS, modes: MODES, profiles: PROFILE_NAMES, controls: CONTROLS, actions: Object.freeze(["REDACT", "KEEP"]),
         lockedCategories: LOCKED, maxOverrides: LIMITS.maxCandidates, largeLimits: LARGE_LIMITS })); },
     isValidIpv4: isValidIpv4,
     isLoopbackIpv4: isLoopbackIpv4,

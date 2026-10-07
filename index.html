@@ -69,12 +69,12 @@
             <button id="clear-button" type="button" class="secondary">Clear</button>
             <button id="sanitize-button" type="button" aria-label="Sanitize log">Sanitize</button>
             <button id="cancel-button" type="button" class="secondary" hidden disabled>Cancel analysis</button>
-            <button id="copy-button" type="button" disabled>Copy sanitized text</button>
+            <button id="copy-button" type="button" title="Sanitize first" disabled>Copy sanitized text</button>
           </div>
         </section>
 
         <details class="settings">
-          <summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Settings <span id="settings-summary" class="settings-summary">Compatibility · Redaction</span></summary>
+          <summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Settings <span id="settings-summary" class="settings-summary">Default rules · hides as [REDACTED]</span></summary>
           <div class="settings-body">
             <div class="policy-controls">
               <label for="mode-select">Output mode
@@ -85,7 +85,7 @@
               </label>
               <label for="profile-select">Privacy profile
                 <select id="profile-select" aria-describedby="policy-warning">
-                  <option value="legacy">Compatibility · original IPv4 behavior</option>
+                  <option value="legacy">Compatibility (default) · original IPv4 rules</option>
                   <option value="strict">Strict privacy</option>
                   <option value="support">Support</option>
                   <option value="incident">Security incident</option>
@@ -118,7 +118,7 @@
                 <label><input id="category-email" type="checkbox" checked> Email addresses</label>
                 <label><input id="category-usernames" type="checkbox" checked> Usernames</label>
                 <label><input id="category-paths" type="checkbox" checked> Path usernames</label>
-                <label><input id="category-network" type="checkbox" checked> Network addresses (IPv4, IPv6, MAC)</label>
+                <label><input id="category-network" type="checkbox" checked> Network addresses (IPv4, IPv6, MAC, internal hostnames)</label>
                 <label><input id="preserve-loopback" type="checkbox"> Preserve loopback (127/8, ::1)</label>
                 <label><input id="preserve-private" type="checkbox"> Preserve private (RFC1918, IPv6 fc00::/7)</label>
               </div>
@@ -127,7 +127,7 @@
               <input id="redact-ip" type="checkbox" checked>
               <span class="toggle-copy">
                 <span class="toggle-title">Redact non-loopback IPv4 addresses</span>
-                <span class="toggle-help">Loopback (127/8, ::1) stays visible. Also covers IPv6 and MAC.</span>
+                <span class="toggle-help">Loopback (127/8, ::1) stays visible. Also covers IPv6, MAC and internal hostnames.</span>
               </span>
             </label>
           </div>
@@ -165,17 +165,37 @@
             <div class="editor-frame output-frame">
               <div id="output-gutter" class="gutter" aria-hidden="true">1</div>
               <textarea id="output-text" spellcheck="false" wrap="off" autocomplete="off" readonly role="tabpanel" aria-labelledby="sanitized-tab" aria-describedby="preview-help" placeholder="The cleaned version appears here."></textarea>
+              <div id="output-empty" class="empty-state">
+                <p class="empty-title">Cleaned text appears here</p>
+                <p class="empty-sub">Paste on the left, or <button id="empty-sample" type="button" class="link-button">load a sample</button>.</p>
+                <ul class="catch-list" aria-label="What SafePaste catches">
+                  <li>Passwords</li>
+                  <li>API keys</li>
+                  <li>Bearer &amp; JWT tokens</li>
+                  <li>Cloud &amp; GitHub keys</li>
+                  <li>Private keys</li>
+                  <li>Cookies &amp; sessions</li>
+                  <li>Emails</li>
+                  <li>Usernames &amp; home paths</li>
+                  <li>IPs &amp; MACs</li>
+                  <li>Internal hostnames</li>
+                </ul>
+                <details class="rule-catalog">
+                  <summary id="rule-catalog-summary">All rules</summary>
+                  <ul id="rule-catalog"></ul>
+                </details>
+              </div>
               <pre id="preview-panel" class="visual-output empty" role="tabpanel" aria-labelledby="preview-tab" tabindex="0" aria-describedby="preview-help" data-output-preview hidden>Your visual redaction preview appears here.</pre>
             </div>
           </article>
         </section>
         <div class="editor-help">
           <p id="input-help"><kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd> sanitize · <kbd>Ctrl/⌘</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> copy · or drop a file</p>
-          <p id="preview-help">Preview masks every detected value, including KEEP decisions. Copy uses your final choices.</p>
+          <p id="preview-help" hidden>Preview masks every detected value, including KEEP decisions (items set to “Keep original”). Copy and downloads use your final choices.</p>
         </div>
 
 
-        <section class="summary" aria-labelledby="summary-title">
+        <section id="summary" class="summary" data-state="empty" aria-labelledby="summary-title">
           <div class="summary-count">
             <h2 id="summary-title" class="sr-only">Result</h2>
             <p><strong id="redaction-count">0</strong> redactions found</p>
@@ -192,15 +212,21 @@
               <li>No review yet.</li>
             </ul>
           </div>
-          <p class="review-warning"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/></svg>Always check before sharing. Unknown secrets can slip through.</p>
+          <p id="review-warning" class="review-warning" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/></svg><span id="review-warning-text">Always check before sharing. Unknown secrets can slip through.</span></p>
         </section>
 
         <section class="review-grid" aria-label="Findings and privacy report">
-          <section class="findings-panel" aria-labelledby="findings-title">
-            <h2 id="findings-title">Findings <span id="finding-count">0</span></h2>
-            <p class="review-note">Original values are never shown here. Passwords, tokens and keys are always hidden.</p>
+          <section id="findings-panel" class="findings-panel" data-state="empty" aria-labelledby="findings-title">
+            <div class="findings-head">
+              <h2 id="findings-title">Findings <span id="finding-count">0</span></h2>
+              <div class="findings-actions">
+                <button id="hide-all" type="button" class="secondary" hidden disabled>Hide all</button>
+                <button id="undo-hide" type="button" class="secondary" hidden>Undo</button>
+              </div>
+            </div>
+            <p class="review-note">Original values are never shown here. Choose Hide or Keep for each item; passwords, tokens and keys are always hidden. Click a line number to find it in the sanitized text.</p>
             <ol id="findings-list" aria-label="Detected findings"></ol>
-            <nav class="findings-pagination" aria-label="Findings pages">
+            <nav id="findings-pager" class="findings-pagination" aria-label="Findings pages" hidden>
               <button id="findings-previous" type="button" disabled>Previous</button>
               <span id="findings-page" role="status" aria-live="polite">No review yet.</span>
               <button id="findings-next" type="button" disabled>Next</button>
@@ -210,9 +236,9 @@
             <h2 id="report-title">Export</h2>
             <div class="button-row">
               <button id="download-log" type="button" disabled>Download sanitized.log</button>
-              <button id="download-report" type="button" disabled>Download privacy-report.json</button>
+              <button id="download-report" type="button" class="secondary" disabled>Download privacy-report.json</button>
             </div>
-            <p class="review-note">Saved only when you click. The report has counts, never your values.</p>
+            <p class="review-note"><span id="export-hint">Sanitize first to enable downloads. </span>Saved only when you click. The report has counts, never your values.</p>
             <details class="report-details">
               <summary>Report details</summary>
               <pre id="privacy-report">No review yet. Human review required before sharing.</pre>
@@ -220,9 +246,19 @@
           </section>
         </section>
 
+        <section class="verify" aria-labelledby="verify-title">
+          <h2 id="verify-title">Verify it yourself</h2>
+          <ul class="verify-list">
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/><path class="strike" d="M3 3l18 18"/></svg><span><strong>Go offline.</strong> Once this page has loaded, turn off Wi-Fi. Sanitizing still works.</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/><path d="M20.2 18.2L22 20"/></svg><span><strong>Watch the network.</strong> DevTools → Network stays empty while you sanitize. This page's security policy (<code>connect-src 'none'</code>) blocks every request.</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg><span><strong>Read the code.</strong> <code id="source-url">github.com/Mighiana/SafePaste</code> · plain JavaScript, no dependencies. It is plain text, not a link: this page has no outside links at all.</span></li>
+          </ul>
+        </section>
+
         <section class="statusbar" aria-label="Review status">
           <span data-cursor-status>Ln 1, Col 1</span>
           <span id="engine-status">Engine: starting</span>
+          <span id="engine-version">Engine v–</span>
           <span><strong data-status-redaction-count>0</strong> redactions found</span>
           <span class="status-dots" data-category-dots aria-hidden="true"></span>
         </section>
