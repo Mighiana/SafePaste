@@ -23,7 +23,7 @@ const checks = [
   },
   {
     name: "checkbox label",
-    passed: /<label\s+class="toggle">[\s\S]*<input\s+id="redact-ip"\s+type="checkbox"\s+checked>[\s\S]*Redact non-loopback IPv4 addresses[\s\S]*<\/label>/.test(html),
+    passed: /<label\s+class="toggle"[^>]*>[\s\S]*<input\s+id="redact-ip"\s+type="checkbox"\s+checked>[\s\S]*Redact non-loopback IPv4 addresses[\s\S]*<\/label>/.test(html),
     note: "IPv4 checkbox is wrapped in a label with descriptive text."
   },
   {

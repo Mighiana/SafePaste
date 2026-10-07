@@ -22,7 +22,7 @@
                 <h1>SafePaste</h1>
                 <span class="trust-badge">Local only</span>
               </span>
-              <span class="subtitle">Developer log sanitization before sharing.</span>
+              <span class="subtitle">Local privacy firewall for technical logs.</span>
             </span>
           </a>
           <div class="topbar-right" aria-label="Privacy guarantees">
@@ -47,16 +47,56 @@
         </section>
 
         <section class="toolbar" aria-label="Detection rules and actions">
+          <div class="policy-controls">
+            <label for="profile-select">Privacy profile
+              <select id="profile-select" aria-describedby="policy-warning">
+                <option value="legacy">Compatibility · original IPv4 behavior</option>
+                <option value="strict">Strict privacy</option>
+                <option value="support">Support</option>
+                <option value="incident">Security incident</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label for="format-select">Input format
+              <select id="format-select">
+                <option value="auto">Auto detect</option>
+                <option value="text">Plain text</option>
+                <option value="json">JSON</option>
+                <option value="env">.env / KEY=VALUE</option>
+                <option value="headers">HTTP headers</option>
+                <option value="logfmt">Logfmt</option>
+              </select>
+            </label>
+            <details class="policy-details">
+              <summary>Inspect active policy</summary>
+              <pre id="policy-details"></pre>
+            </details>
+          </div>
+          <p id="policy-warning" class="review-note">Compatibility preserves loopback. Choose Strict privacy for broader supported redaction. Human review required.</p>
+          <fieldset id="custom-controls" hidden disabled>
+            <legend>Custom categories · checked means REDACT</legend>
+            <div class="custom-grid">
+              <label><input type="checkbox" checked disabled> Credentials · locked</label>
+              <label><input type="checkbox" checked disabled> Tokens · locked</label>
+              <label><input type="checkbox" checked disabled> Secrets · locked</label>
+              <label><input id="category-email" type="checkbox" checked> Email addresses</label>
+              <label><input id="category-usernames" type="checkbox" checked> Usernames</label>
+              <label><input id="category-paths" type="checkbox" checked> Path usernames</label>
+              <label><input id="category-network" type="checkbox" checked> IPv4 addresses</label>
+              <label><input id="preserve-loopback" type="checkbox"> Preserve loopback IPv4</label>
+              <label><input id="preserve-private" type="checkbox"> Preserve RFC1918 private IPv4</label>
+            </div>
+          </fieldset>
           <div class="rule-strip" aria-label="Detection rule groups" data-visual-category-chips>
             <span class="rule-chip credentials" data-rule-chip="credentials"><span class="rule-dot"></span>Credentials <strong>0</strong></span>
             <span class="rule-chip tokens" data-rule-chip="tokens"><span class="rule-dot"></span>Tokens <strong>0</strong></span>
             <span class="rule-chip email" data-rule-chip="email"><span class="rule-dot"></span>Email <strong>0</strong></span>
             <span class="rule-chip usernames" data-rule-chip="usernames"><span class="rule-dot"></span>Usernames <strong>0</strong></span>
-            <span class="rule-chip ipv4" data-rule-chip="ipv4"><span class="rule-dot"></span>IPv4 optional <strong>0</strong></span>
+            <span class="rule-chip ipv4" data-rule-chip="network"><span class="rule-dot"></span>IPv4 <strong>0</strong></span>
           </div>
 
           <div class="toolbar-actions">
-            <label class="toggle">
+            <label class="toggle" id="legacy-controls">
               <input id="redact-ip" type="checkbox" checked>
               <span class="toggle-copy">
                 <span class="toggle-title">Redact non-loopback IPv4 addresses</span>
@@ -71,6 +111,24 @@
           </div>
         </section>
 
+        <section class="input-tools" aria-label="Local input tools">
+          <label for="file-input">Open local text file
+            <input id="file-input" type="file" accept="text/*,.txt,.log,.json,.env,.conf,.ini,.csv,.md,.yaml,.yml,.xml,.html,.js,.ts,.py,.java,.go,.rs,.sh">
+          </label>
+          <div class="sample-tools">
+            <label for="sample-select">Sample / synthetic data
+              <select id="sample-select">
+                <option value="web">Web application</option>
+                <option value="cloud">Cloud / API JSON</option>
+                <option value="auth">Authentication headers</option>
+                <option value="support">Support / debug .env</option>
+              </select>
+            </label>
+            <button id="sample-button" class="secondary" type="button">Load synthetic sample</button>
+          </div>
+          <p class="review-note">Files stay in this tab. Loading replaces the input after confirmation. File limit: 2 MiB; text limit: 2,097,152 UTF-16 units. Browser responsiveness is not yet benchmarked.</p>
+        </section>
+
         <section class="editor-grid" aria-label="Original and sanitized text">
           <article class="pane original-pane">
             <div class="pane-tabs">
@@ -82,7 +140,7 @@
             </div>
             <div class="editor-frame" data-drop-zone>
               <div id="input-gutter" class="gutter" aria-hidden="true">1</div>
-              <textarea id="input-text" spellcheck="false" placeholder="Paste logs, stack traces, or config snippets here"></textarea>
+              <textarea id="input-text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-describedby="input-help" placeholder="Paste logs, stack traces, or config snippets here"></textarea>
               <div class="drop-overlay" aria-hidden="true">
                 <span>Drop a local text log</span>
                 <small>No upload. File contents stay in this browser tab.</small>
@@ -96,17 +154,43 @@
                 <label for="output-text">Sanitized text</label>
                 <div class="tablist" role="tablist" aria-label="Sanitized output views">
                   <button id="sanitized-tab" class="file-tab active" type="button" role="tab" aria-selected="true" aria-controls="output-text">sanitized.log</button>
-                  <button id="preview-tab" class="file-tab" type="button" role="tab" aria-selected="false" aria-controls="preview-panel">preview.log</button>
+                  <button id="preview-tab" class="file-tab" type="button" role="tab" aria-selected="false" aria-controls="preview-panel" tabindex="-1">preview.log</button>
                 </div>
               </div>
               <span class="pane-meta" data-output-meta>0 redactions</span>
             </div>
             <div class="editor-frame output-frame">
               <div id="output-gutter" class="gutter" aria-hidden="true">1</div>
-              <textarea id="output-text" spellcheck="false" readonly placeholder="Your sanitized log will appear here."></textarea>
-              <pre id="preview-panel" class="visual-output empty" data-output-preview hidden>Your visual redaction preview appears here.</pre>
+              <textarea id="output-text" spellcheck="false" readonly role="tabpanel" aria-labelledby="sanitized-tab" aria-describedby="preview-help" placeholder="Your sanitized log will appear here."></textarea>
+              <pre id="preview-panel" class="visual-output empty" role="tabpanel" aria-labelledby="preview-tab" tabindex="0" aria-describedby="preview-help" data-output-preview hidden>Your visual redaction preview appears here.</pre>
             </div>
           </article>
+        </section>
+        <div class="editor-help">
+          <p id="input-help">Ctrl/Cmd + Enter: sanitize. Ctrl/Cmd + Shift + C: copy reviewed output. Drop a local text file or use the file picker.</p>
+          <p id="preview-help">Preview masks every detected value, including KEEP decisions. Copy and downloads use the final reviewed plain text and can include values kept by policy or by you. Unknown sensitive values may remain. Human review required.</p>
+        </div>
+
+        <section class="review-grid" aria-label="Findings and privacy report">
+          <section class="findings-panel" aria-labelledby="findings-title">
+            <h2 id="findings-title">Findings <span id="finding-count">0</span></h2>
+            <p class="review-note">Metadata only · no original values. Credentials, tokens and secrets cannot be kept. KEEP explicitly preserves a value in final output; Preview stays masked.</p>
+            <ol id="findings-list" aria-label="Detected findings"></ol>
+            <nav class="findings-pagination" aria-label="Findings pages">
+              <button id="findings-previous" type="button" disabled>Previous</button>
+              <span id="findings-page" role="status" aria-live="polite">No review yet.</span>
+              <button id="findings-next" type="button" disabled>Next</button>
+            </nav>
+          </section>
+          <section class="report-panel" aria-labelledby="report-title">
+            <h2 id="report-title">Privacy report</h2>
+            <pre id="privacy-report">No review yet. Human review required before sharing.</pre>
+            <div class="button-row">
+              <button id="download-log" type="button" disabled>Download sanitized.log</button>
+              <button id="download-report" type="button" disabled>Download privacy-report.json</button>
+            </div>
+            <p class="review-note">Exports are explicit and local. The report contains metadata only, never original values. There is no original-log export.</p>
+          </section>
         </section>
 
         <section class="statusbar" aria-label="Review status">
@@ -116,7 +200,7 @@
           <ul class="privacy-footer">
             <li>Processed locally</li>
             <li>Nothing uploaded</li>
-            <li>Nothing saved</li>
+            <li>No automatic storage</li>
             <li>Review before sharing</li>
           </ul>
         </section>
