@@ -3,7 +3,8 @@
 # requests; Pages cannot send response headers, so the <meta> CSP in index.html applies.
 name: pages
 
-# Deploys only after the full ci workflow succeeds for a push to main (or on manual dispatch).
+# Deploys only after the full ci workflow succeeds for a push to main (or on manual dispatch),
+# and only if that commit is still the tip of main, so a late CI run cannot roll the site back.
 on:
   workflow_run:
     workflows: [ci]
@@ -30,30 +31,61 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - id: fresh
+        name: Skip unless this commit is the tip of main
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" = "$DEPLOY_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Not deploying $DEPLOY_SHA: main is now at $tip, which deploys after its own ci run."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.fresh.outputs.current == 'true'
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - if: steps.fresh.outputs.current == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Checks before publishing
+      - if: steps.fresh.outputs.current == 'true'
+        name: Checks before publishing
         run: |
           node evals/run-static-privacy-checks.js
           node tests/test-sanitizer.js
           node tests/test-review-ui.js
           node tests/test-worker.js
-      - name: Assemble site (app files only)
+      - if: steps.fresh.outputs.current == 'true'
+        name: Assemble site (app files only)
         run: |
           mkdir -p _site/src
           cp index.html styles.css app.js _site/
           cp src/sanitizer.js src/worker.js _site/src/
           touch _site/.nojekyll
           find _site -type f | sort
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - if: steps.fresh.outputs.current == 'true'
+        uses: actions/configure-pages@v5
+      - if: steps.fresh.outputs.current == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      - id: recheck
+        name: Re-check the tip of main just before deploying
+        if: steps.fresh.outputs.current == 'true'
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" = "$DEPLOY_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Not deploying $DEPLOY_SHA: main is now at $tip, which deploys after its own ci run."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
       - id: deployment
+        if: steps.recheck.outputs.current == 'true'
         uses: actions/deploy-pages@v4

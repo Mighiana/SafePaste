@@ -7,6 +7,9 @@ Added:
   worker checks, then publishes only the browser app files to GitHub Pages.
 - Deployment is gated on the full `ci` workflow: it runs only after `ci` succeeds
   for a push to `main` (or on manual dispatch), and deploys that exact commit.
+- A deploy is skipped unless its commit is still the tip of `main` (checked at the
+  start and again just before publishing), so a late CI run for an older push
+  cannot roll the site back.
 
 Stakeholder impact:
 A public demo link. Analysis remains in the browser; Pages adds no backend. Pages
