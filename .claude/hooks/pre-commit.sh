@@ -55,8 +55,13 @@ for (const file of changed) {
   }
 }
 
+// GitHub secret scanning alerts on Google-key-shaped literals even when they carry a
+// synthetic marker, so fixtures must build them at runtime or JSON-escape them.
+const SCANNER_ALERTED = /AIza[0-9A-Za-z_-]{35}/;
+
 function fixtureProblem(text) {
   let match;
+  if (SCANNER_ALERTED.test(text)) return "Google-API-key-shaped literal (alerted by GitHub secret scanning even when synthetic; build it at runtime or JSON-escape it)";
   FIXTURE_TOKENS.lastIndex = 0;
   while ((match = FIXTURE_TOKENS.exec(text))) {
     if (!SYNTHETIC.test(match[0])) return "non-synthetic token format";

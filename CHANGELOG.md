@@ -1,5 +1,23 @@
 # Changelog
 
+## October 2026: GitHub secret-scanning alert on a synthetic fixture
+
+Changed:
+GitHub secret scanning raised a "Google API Key" alert on corpus case TP-017
+(evals/corpora/true_positive.json), whose value was the synthetic
+AIzaFAKE_TEST_x... string. It is not a real key and nothing needs revoking, but
+the raw literal had the exact Google format. The fixture is now JSON-escaped
+(\u0041Iza...), so it parses to the same test input, and the pre-commit hook now
+blocks Google-key-shaped literals in fixtures even when they carry a synthetic
+marker (tests/test-hook.js covers it).
+
+Why:
+Synthetic markers satisfy this repository's hook, but not GitHub's scanner.
+
+Stakeholder impact:
+None on detection. Earlier commits still contain the literal, so the existing alert
+has to be closed in GitHub as "used in tests".
+
 ## October 2026: real-browser validation and visual evidence
 
 Changed:

@@ -33,6 +33,9 @@ try {
   git("add", "tests/fixture.js");
   assert.strictEqual(scan().status, 0, "explicit synthetic fixture allowed");
   const realistic = "xox" + "b-" + "1234567890" + "-" + "abcdefghijKLMNOP";
+  fs.writeFileSync(path.join(directory, "tests/fixture.js"), "const t = '" + "AIza" + "FAKE_TEST_" + "x".repeat(25) + "';");
+  git("add", "tests/fixture.js");
+  assert.strictEqual(scan().status, 1, "Google-key-shaped literal in a fixture must block even with a synthetic marker");
   fs.writeFileSync(path.join(directory, "tests/fixture.js"), "const t = '" + realistic + "';");
   git("add", "tests/fixture.js");
   const fixtureBlocked = scan();

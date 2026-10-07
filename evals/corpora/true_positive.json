@@ -193,9 +193,9 @@
       "id": "TP-017",
       "topic": "credentials",
       "title": "Google API key",
-      "input": "key=AIzaFAKE_TEST_xxxxxxxxxxxxxxxxxxxxxxxxx",
+      "input": "key=\u0041IzaFAKE_TEST_xxxxxxxxxxxxxxxxxxxxxxxxx",
       "secrets": [
-        "AIzaFAKE_TEST_xxxxxxxxxxxxxxxxxxxxxxxxx"
+        "\u0041IzaFAKE_TEST_xxxxxxxxxxxxxxxxxxxxxxxxx"
       ],
       "categories": [
         "GOOGLE_API_KEY"
