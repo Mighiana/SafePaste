@@ -207,7 +207,7 @@ fixtures. Desktop screenshots are full-page at 1585 px width.
 | 7 | CLI usage (terminal) | [07-cli-usage.png](evidence/07-cli-usage.png) |
 | 8 | Evaluation / red-team results (terminal) | [08-eval-redteam-results.png](evidence/08-eval-redteam-results.png) |
 | 9 | Mobile 390 px (Security incident profile) | [09-mobile-390.png](evidence/09-mobile-390.png) |
-| 10 | 14 s muted VP9 WebM: load synthetic log, sanitize, preview masking, findings, report | [demo.webm](evidence/demo.webm) |
+| 10 | 13 s muted VP9 WebM: load synthetic log, sanitize, masked view, findings, KEEP decision, report | [demo.webm](evidence/demo.webm) |
 
 The browser pass found two issues, fixed before capture: finding REDACT/KEEP selects
 overflowed their cards at 390 px, and the Cloud/API sample's 9-character `api_key`

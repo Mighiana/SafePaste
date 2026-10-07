@@ -23,136 +23,130 @@
                 <h1>SafePaste</h1>
                 <span class="trust-badge">Local only</span>
               </span>
-              <span class="subtitle">Local privacy firewall for technical logs.</span>
+              <span class="subtitle">Hide secrets in logs before you share them.</span>
             </span>
           </a>
-          <div class="topbar-right" aria-label="Privacy guarantees">
-            <span class="egress-badge">No Network Egress</span>
-            <ul class="trust-indicators">
-              <li>No backend</li>
-              <li>No analytics</li>
-              <li>No browser storage</li>
-              <li>No upload</li>
-            </ul>
-          </div>
+          <ul class="trust-indicators" aria-label="Privacy guarantees">
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Runs in your browser</li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15V4M7 9l5-5 5 5M4 20h16"/><path class="strike" d="M3 3l18 18"/></svg>No upload</li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="strike" d="M3 3l18 18"/></svg>No tracking</li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path class="strike" d="M3 3l18 18"/></svg>No storage</li>
+          </ul>
         </div>
       </header>
 
       <main class="workspace" aria-labelledby="workspace-title" data-workspace-shell>
         <section class="workspace-head" aria-labelledby="workspace-title">
-          <div>
-            <p class="eyebrow">Privacy review workspace</p>
-            <h2 id="workspace-title">Sanitizer Console</h2>
-          </div>
+          <h2 id="workspace-title" class="sr-only">Sanitize a log</h2>
+          <ol id="flow-steps" class="flow-steps" data-stage="paste" aria-label="Steps">
+            <li data-step="paste"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg><span>Paste</span></li>
+            <li data-step="sanitize"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Sanitize</span></li>
+            <li data-step="review"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Check</span></li>
+            <li data-step="copy"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy</span></li>
+          </ol>
           <p id="status-message" class="status" role="status" aria-live="polite">Ready. Paste logs to begin.</p>
         </section>
 
-        <section class="toolbar" aria-label="Detection rules and actions">
-          <div class="policy-controls">
-            <label for="mode-select">Output mode
-              <select id="mode-select" aria-describedby="mode-help">
-                <option value="redaction">Redaction</option>
-                <option value="pseudonymization">Pseudonymization · context only</option>
-              </select>
+        <section class="toolbar" aria-label="Input and actions">
+          <div class="input-tools" aria-label="Local input tools">
+            <label for="file-input">Open local text file
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <input id="file-input" type="file" accept="text/*,.txt,.log,.json,.env,.conf,.ini,.csv,.md,.yaml,.yml,.xml,.html,.js,.ts,.py,.java,.go,.rs,.sh">
             </label>
-            <label for="profile-select">Privacy profile
-              <select id="profile-select" aria-describedby="policy-warning">
-                <option value="legacy">Compatibility · original IPv4 behavior</option>
-                <option value="strict">Strict privacy</option>
-                <option value="support">Support</option>
-                <option value="incident">Security incident</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            <label for="format-select">Input format
-              <select id="format-select">
-                <option value="auto">Auto detect</option>
-                <option value="text">Plain text</option>
-                <option value="json">JSON</option>
-                <option value="env">.env / KEY=VALUE</option>
-                <option value="headers">HTTP headers</option>
-                <option value="logfmt">Logfmt</option>
-              </select>
-            </label>
-            <details class="policy-details">
-              <summary>Inspect active policy</summary>
-              <pre id="policy-details"></pre>
-            </details>
-          </div>
-          <p id="policy-warning" class="review-note">Compatibility preserves loopback. Choose Strict privacy for broader supported redaction. Human review required.</p>
-          <p id="mode-help" class="review-note">Pseudonyms preserve identifier relationships in this tab only; secrets always redact. Maps stay in memory and reset on Clear/reload. KEEP still preserves originals in final Copy/download; Preview stays masked.</p>
-          <fieldset id="custom-controls" hidden disabled>
-            <legend>Custom categories · checked means REDACT</legend>
-            <div class="custom-grid">
-              <label><input type="checkbox" checked disabled> Credentials · locked</label>
-              <label><input type="checkbox" checked disabled> Tokens · locked</label>
-              <label><input type="checkbox" checked disabled> Secrets · locked</label>
-              <label><input id="category-email" type="checkbox" checked> Email addresses</label>
-              <label><input id="category-usernames" type="checkbox" checked> Usernames</label>
-              <label><input id="category-paths" type="checkbox" checked> Path usernames</label>
-              <label><input id="category-network" type="checkbox" checked> Network addresses (IPv4, IPv6, MAC)</label>
-              <label><input id="preserve-loopback" type="checkbox"> Preserve loopback (127/8, ::1)</label>
-              <label><input id="preserve-private" type="checkbox"> Preserve private (RFC1918, IPv6 fc00::/7)</label>
-            </div>
-          </fieldset>
-          <div class="rule-strip" aria-label="Detection rule groups" data-visual-category-chips>
-            <span class="rule-chip credentials" data-rule-chip="credentials"><span class="rule-dot"></span>Credentials <strong>0</strong></span>
-            <span class="rule-chip tokens" data-rule-chip="tokens"><span class="rule-dot"></span>Tokens <strong>0</strong></span>
-            <span class="rule-chip email" data-rule-chip="email"><span class="rule-dot"></span>Email <strong>0</strong></span>
-            <span class="rule-chip usernames" data-rule-chip="usernames"><span class="rule-dot"></span>Usernames <strong>0</strong></span>
-            <span class="rule-chip ipv4" data-rule-chip="network"><span class="rule-dot"></span>Network <strong>0</strong></span>
-          </div>
-
-          <div class="toolbar-actions">
-            <label class="toggle" id="legacy-controls">
-              <input id="redact-ip" type="checkbox" checked>
-              <span class="toggle-copy">
-                <span class="toggle-title">Redact non-loopback IPv4 addresses</span>
-                <span class="toggle-help">Loopback (127/8, ::1) stays visible. Also covers IPv6 and MAC addresses. Turn off only when network context is needed.</span>
-              </span>
-            </label>
-            <div class="button-row">
-              <button id="clear-button" type="button" class="secondary">Clear</button>
-              <button id="sanitize-button" type="button" aria-label="Sanitize log">Sanitize</button>
-              <button id="cancel-button" type="button" class="secondary" hidden disabled>Cancel analysis</button>
-              <button id="copy-button" type="button" disabled>Copy sanitized text</button>
-            </div>
-          </div>
-        </section>
-
-        <section class="input-tools" aria-label="Local input tools">
-          <label for="file-input">Open local text file
-            <input id="file-input" type="file" accept="text/*,.txt,.log,.json,.env,.conf,.ini,.csv,.md,.yaml,.yml,.xml,.html,.js,.ts,.py,.java,.go,.rs,.sh">
-          </label>
-          <div class="sample-tools">
-            <label for="sample-select">Sample / synthetic data
+            <div class="sample-tools">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9"/></svg>
+              <label for="sample-select">Try a sample</label>
               <select id="sample-select">
                 <option value="web">Web application</option>
                 <option value="cloud">Cloud / API JSON</option>
                 <option value="auth">Authentication headers</option>
                 <option value="support">Support / debug .env</option>
               </select>
-            </label>
-            <button id="sample-button" class="secondary" type="button">Load synthetic sample</button>
+              <button id="sample-button" class="secondary" type="button">Load</button>
+            </div>
           </div>
-          <p class="review-note">Files stay in this tab. Loading replaces the input after confirmation. Size limit depends on the engine shown in the status bar: 16 MiB with the local worker, 2 MiB in the synchronous fallback. Larger inputs are refused, not partially processed.</p>
+          <div class="button-row">
+            <button id="clear-button" type="button" class="secondary">Clear</button>
+            <button id="sanitize-button" type="button" aria-label="Sanitize log">Sanitize</button>
+            <button id="cancel-button" type="button" class="secondary" hidden disabled>Cancel analysis</button>
+            <button id="copy-button" type="button" disabled>Copy sanitized text</button>
+          </div>
         </section>
+
+        <details class="settings">
+          <summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Settings <span id="settings-summary" class="settings-summary">Compatibility · Redaction</span></summary>
+          <div class="settings-body">
+            <div class="policy-controls">
+              <label for="mode-select">Output mode
+                <select id="mode-select" aria-describedby="mode-help">
+                  <option value="redaction">Redaction</option>
+                  <option value="pseudonymization">Pseudonymization · context only</option>
+                </select>
+              </label>
+              <label for="profile-select">Privacy profile
+                <select id="profile-select" aria-describedby="policy-warning">
+                  <option value="legacy">Compatibility · original IPv4 behavior</option>
+                  <option value="strict">Strict privacy</option>
+                  <option value="support">Support</option>
+                  <option value="incident">Security incident</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <label for="format-select">Input format
+                <select id="format-select">
+                  <option value="auto">Auto detect</option>
+                  <option value="text">Plain text</option>
+                  <option value="json">JSON</option>
+                  <option value="env">.env / KEY=VALUE</option>
+                  <option value="headers">HTTP headers</option>
+                  <option value="logfmt">Logfmt</option>
+                </select>
+              </label>
+              <details class="policy-details">
+                <summary>Inspect active policy</summary>
+                <pre id="policy-details"></pre>
+              </details>
+            </div>
+            <p id="policy-warning" class="review-note">Compatibility preserves loopback. Choose Strict privacy for broader supported redaction. Human review required.</p>
+            <p id="mode-help" class="review-note">Pseudonyms like [EMAIL_1] link repeated values in this tab only. Secrets always redact.</p>
+            <fieldset id="custom-controls" hidden disabled>
+              <legend>Custom categories · checked means REDACT</legend>
+              <div class="custom-grid">
+                <label><input type="checkbox" checked disabled> Credentials · locked</label>
+                <label><input type="checkbox" checked disabled> Tokens · locked</label>
+                <label><input type="checkbox" checked disabled> Secrets · locked</label>
+                <label><input id="category-email" type="checkbox" checked> Email addresses</label>
+                <label><input id="category-usernames" type="checkbox" checked> Usernames</label>
+                <label><input id="category-paths" type="checkbox" checked> Path usernames</label>
+                <label><input id="category-network" type="checkbox" checked> Network addresses (IPv4, IPv6, MAC)</label>
+                <label><input id="preserve-loopback" type="checkbox"> Preserve loopback (127/8, ::1)</label>
+                <label><input id="preserve-private" type="checkbox"> Preserve private (RFC1918, IPv6 fc00::/7)</label>
+              </div>
+            </fieldset>
+            <label class="toggle" id="legacy-controls">
+              <input id="redact-ip" type="checkbox" checked>
+              <span class="toggle-copy">
+                <span class="toggle-title">Redact non-loopback IPv4 addresses</span>
+                <span class="toggle-help">Loopback (127/8, ::1) stays visible. Also covers IPv6 and MAC.</span>
+              </span>
+            </label>
+          </div>
+        </details>
 
         <section class="editor-grid" aria-label="Original and sanitized text">
           <article class="pane original-pane">
             <div class="pane-tabs">
               <div>
                 <label for="input-text">Original text</label>
-                <span class="file-tab active">original.log</span>
               </div>
               <span class="pane-meta" data-original-meta>0 lines</span>
             </div>
             <div class="editor-frame" data-drop-zone>
               <div id="input-gutter" class="gutter" aria-hidden="true">1</div>
-              <textarea id="input-text" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" aria-describedby="input-help" placeholder="Paste logs, stack traces, or config snippets here"></textarea>
+              <textarea id="input-text" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" aria-describedby="input-help" placeholder="Paste a log, stack trace or config here…"></textarea>
               <div class="drop-overlay" aria-hidden="true">
-                <span>Drop a local text log</span>
-                <small>No upload. File contents stay in this browser tab.</small>
+                <span>Drop a text file</span>
+                <small>It stays in this tab. Nothing is uploaded.</small>
               </div>
             </div>
           </article>
@@ -162,28 +156,49 @@
               <div>
                 <label for="output-text">Sanitized text</label>
                 <div class="tablist" role="tablist" aria-label="Sanitized output views">
-                  <button id="sanitized-tab" class="file-tab active" type="button" role="tab" aria-selected="true" aria-controls="output-text">sanitized.log</button>
-                  <button id="preview-tab" class="file-tab" type="button" role="tab" aria-selected="false" aria-controls="preview-panel" tabindex="-1">preview.log</button>
+                  <button id="sanitized-tab" class="file-tab active" type="button" role="tab" aria-selected="true" aria-controls="output-text">Text</button>
+                  <button id="preview-tab" class="file-tab" type="button" role="tab" aria-selected="false" aria-controls="preview-panel" tabindex="-1">Masked view</button>
                 </div>
               </div>
               <span class="pane-meta" data-output-meta>0 redactions</span>
             </div>
             <div class="editor-frame output-frame">
               <div id="output-gutter" class="gutter" aria-hidden="true">1</div>
-              <textarea id="output-text" spellcheck="false" wrap="off" autocomplete="off" readonly role="tabpanel" aria-labelledby="sanitized-tab" aria-describedby="preview-help" placeholder="Your sanitized log will appear here."></textarea>
+              <textarea id="output-text" spellcheck="false" wrap="off" autocomplete="off" readonly role="tabpanel" aria-labelledby="sanitized-tab" aria-describedby="preview-help" placeholder="The cleaned version appears here."></textarea>
               <pre id="preview-panel" class="visual-output empty" role="tabpanel" aria-labelledby="preview-tab" tabindex="0" aria-describedby="preview-help" data-output-preview hidden>Your visual redaction preview appears here.</pre>
             </div>
           </article>
         </section>
         <div class="editor-help">
-          <p id="input-help">Ctrl/Cmd + Enter: sanitize. Ctrl/Cmd + Shift + C: copy reviewed output. Drop a local text file or use the file picker.</p>
-          <p id="preview-help">Preview masks every detected value, including KEEP decisions. Copy and downloads use the final reviewed plain text and can include values kept by policy or by you. Unknown sensitive values may remain. Human review required.</p>
+          <p id="input-help"><kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd> sanitize · <kbd>Ctrl/⌘</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> copy · or drop a file</p>
+          <p id="preview-help">Preview masks every detected value, including KEEP decisions. Copy uses your final choices.</p>
         </div>
+
+
+        <section class="summary" aria-labelledby="summary-title">
+          <div class="summary-count">
+            <h2 id="summary-title" class="sr-only">Result</h2>
+            <p><strong id="redaction-count">0</strong> redactions found</p>
+          </div>
+          <div class="summary-categories">
+            <div class="rule-strip" aria-label="Detection rule groups" data-visual-category-chips>
+              <span class="rule-chip credentials" data-rule-chip="credentials"><span class="rule-dot"></span>Credentials <strong>0</strong></span>
+              <span class="rule-chip tokens" data-rule-chip="tokens"><span class="rule-dot"></span>Tokens <strong>0</strong></span>
+              <span class="rule-chip email" data-rule-chip="email"><span class="rule-dot"></span>Email <strong>0</strong></span>
+              <span class="rule-chip usernames" data-rule-chip="usernames"><span class="rule-dot"></span>Usernames <strong>0</strong></span>
+              <span class="rule-chip ipv4" data-rule-chip="network"><span class="rule-dot"></span>Network <strong>0</strong></span>
+            </div>
+            <ul id="category-list" class="category-list sr-only" aria-label="Detected sensitive data categories">
+              <li>No review yet.</li>
+            </ul>
+          </div>
+          <p class="review-warning"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/></svg>Always check before sharing. Unknown secrets can slip through.</p>
+        </section>
 
         <section class="review-grid" aria-label="Findings and privacy report">
           <section class="findings-panel" aria-labelledby="findings-title">
             <h2 id="findings-title">Findings <span id="finding-count">0</span></h2>
-            <p class="review-note">Metadata only · no original values. Credentials, tokens and secrets cannot be kept. KEEP explicitly preserves a value in final output; Preview stays masked.</p>
+            <p class="review-note">Original values are never shown here. Passwords, tokens and keys are always hidden.</p>
             <ol id="findings-list" aria-label="Detected findings"></ol>
             <nav class="findings-pagination" aria-label="Findings pages">
               <button id="findings-previous" type="button" disabled>Previous</button>
@@ -192,13 +207,16 @@
             </nav>
           </section>
           <section class="report-panel" aria-labelledby="report-title">
-            <h2 id="report-title">Privacy report</h2>
-            <pre id="privacy-report">No review yet. Human review required before sharing.</pre>
+            <h2 id="report-title">Export</h2>
             <div class="button-row">
               <button id="download-log" type="button" disabled>Download sanitized.log</button>
               <button id="download-report" type="button" disabled>Download privacy-report.json</button>
             </div>
-            <p class="review-note">Exports are explicit and local. The report contains metadata only, never original values. There is no original-log export.</p>
+            <p class="review-note">Saved only when you click. The report has counts, never your values.</p>
+            <details class="report-details">
+              <summary>Report details</summary>
+              <pre id="privacy-report">No review yet. Human review required before sharing.</pre>
+            </details>
           </section>
         </section>
 
@@ -207,27 +225,8 @@
           <span id="engine-status">Engine: starting</span>
           <span><strong data-status-redaction-count>0</strong> redactions found</span>
           <span class="status-dots" data-category-dots aria-hidden="true"></span>
-          <ul class="privacy-footer">
-            <li>Processed locally</li>
-            <li>Nothing uploaded</li>
-            <li>No automatic storage</li>
-            <li>Review before sharing</li>
-          </ul>
         </section>
 
-        <section class="summary" aria-labelledby="summary-title">
-          <div class="summary-count">
-            <p class="section-kicker">Human review</p>
-            <h2 id="summary-title">Review Summary</h2>
-            <p><strong id="redaction-count">0</strong> redactions found</p>
-          </div>
-          <div class="summary-categories">
-            <h3>Categories Detected</h3>
-            <ul id="category-list" class="category-list" aria-label="Detected sensitive data categories">
-              <li>No review yet.</li>
-            </ul>
-          </div>
-        </section>
       </main>
     </div>
 

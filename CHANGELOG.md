@@ -1,5 +1,24 @@
 # Changelog
 
+## October 2026: simpler, visual-first UI
+
+Changed (presentation only; sanitizer, policies, worker and exports unchanged):
+- Header shows four icon chips (Runs in your browser, No upload, No tracking, No storage)
+  instead of five badges plus a duplicate footer list.
+- A 1 Paste → 2 Sanitize → 3 Check → 4 Copy step bar shows where the user is.
+- One action row: Open file, Try a sample, Clear, Sanitize (larger), Copy.
+- Output mode, profile, format, policy notes, Custom categories and the IPv4 toggle moved
+  into a collapsed Settings panel whose summary shows the active profile and mode.
+- Category counts are pill chips with a coloured count; one amber "always check before
+  sharing" warning replaces several review paragraphs.
+- Findings are colour-coded cards (severity badge, category, line/column, replacement);
+  the rule id, reason and policy reason sit behind a per-finding "Why?" toggle.
+  Locked findings show "Always hidden".
+- The text privacy report is under a collapsed "Report details"; downloads are unchanged.
+- The step bar returns from Copy to Check when a KEEP/REDACT change or a new analysis
+  replaces the output that was copied.
+- Evidence screenshots 01–06 and 09 and `demo.webm` were recaptured with the new layout.
+
 ## October 2026: GitHub Pages demo
 
 Added:

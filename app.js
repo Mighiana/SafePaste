@@ -46,6 +46,8 @@
   let showPreview = false;
   let reader = null;
   let copyTimer = null;
+  let copied = false;
+  const profileNames = { legacy: "Compatibility", strict: "Strict", support: "Support", incident: "Incident", custom: "Custom" };
   const objectUrls = new Set();
 
   const samples = {
@@ -108,6 +110,8 @@
     byId("preserve-loopback").disabled = !redactNetwork;
     byId("preserve-private").disabled = !redactNetwork;
     byId("policy-details").textContent = JSON.stringify(policy, null, 2);
+    byId("settings-summary").textContent = (profileNames[profile.value] || profile.value) + " · " +
+      (mode.value === "pseudonymization" ? "Pseudonyms" : "Redaction");
     byId("policy-warning").textContent = policy.description +
       " Unsupported or unknown sensitive formats may remain. Human review required." +
       (policy.name === "legacy"
@@ -282,6 +286,11 @@
     document.querySelector("[data-output-meta]").textContent = result
       ? result.report.redacted + " redacted · " + result.report.kept + " kept" : "No current review";
     cursorStatus();
+    byId("flow-steps").setAttribute("data-stage", result ? (copied ? "copy" : "review") : input.value ? "sanitize" : "paste");
+  }
+
+  function whyFinding(finding) {
+    return "Rule " + finding.ruleId + ": " + finding.reason + ". " + finding.policyReason;
   }
 
   function resetCopy() {
@@ -443,28 +452,46 @@
     }
     findings.slice(page * pageSize, (page + 1) * pageSize).forEach(function (finding) {
       const item = document.createElement("li");
-      item.className = "finding";
+      item.className = "finding severity-" + finding.severity;
       const heading = document.createElement("h3");
-      heading.textContent = finding.severity.toUpperCase() + " · " + finding.category.replace(/_/g, " ") +
-        " · Line " + finding.position.line + ", Col " + finding.position.column;
+      const badge = document.createElement("span");
+      badge.className = "severity";
+      badge.textContent = finding.severity.toUpperCase();
+      const name = document.createElement("span");
+      name.textContent = " " + finding.category.replace(/_/g, " ") + " ";
+      const where = document.createElement("span");
+      where.className = "finding-where";
+      where.textContent = "Line " + finding.position.line + ", Col " + finding.position.column;
+      heading.appendChild(badge);
+      heading.appendChild(name);
+      heading.appendChild(where);
       const reason = document.createElement("p");
-      reason.textContent = finding.description + " — " + finding.reason;
+      reason.textContent = finding.description;
       const detail = document.createElement("p");
       detail.className = "finding-detail";
-      detail.textContent = "Rule: " + finding.ruleId + " · Action: " + finding.action +
-        " · " + finding.policyReason + " · Replacement: " + finding.replacement;
+      detail.textContent = "→ " + finding.replacement;
+      const why = document.createElement("details");
+      why.className = "finding-why";
+      const whySummary = document.createElement("summary");
+      whySummary.textContent = "Why?";
+      const whyText = document.createElement("p");
+      whyText.textContent = whyFinding(finding);
+      why.appendChild(whySummary);
+      why.appendChild(whyText);
       item.appendChild(heading);
       item.appendChild(reason);
       item.appendChild(detail);
+      item.appendChild(why);
       if (finding.allowKeep) {
         const label = document.createElement("label");
-        label.textContent = "Review action ";
+        label.className = "finding-action";
+        label.textContent = "Action ";
         const control = document.createElement("select");
         control.setAttribute("aria-label", "Action for " + finding.id + ", " + finding.category + ", line " + finding.position.line);
         ["REDACT", "KEEP"].forEach(function (action) {
           const option = document.createElement("option");
           option.value = action;
-          option.textContent = action === "KEEP" ? "KEEP in final output (preview stays masked)" : "REDACT in final output";
+          option.textContent = action === "KEEP" ? "Keep original in copy" : "Hide";
           control.appendChild(option);
         });
         control.value = finding.action;
@@ -483,8 +510,9 @@
             generation += 1;
             revokeDownloads();
             const decided = result.findings.find(function (entry) { return entry.id === finding.id; });
-            detail.textContent = "Rule: " + decided.ruleId + " · Action: " + decided.action +
-              " · " + decided.policyReason + " · Replacement: " + decided.replacement;
+            detail.textContent = "→ " + decided.replacement;
+            whyText.textContent = whyFinding(decided);
+            copied = false;
             renderReport();
             setView(showPreview);
             resetCopy();
@@ -508,7 +536,9 @@
         item.appendChild(label);
       } else {
         const locked = document.createElement("p");
-        locked.textContent = "REDACT · locked high-risk finding; KEEP is unavailable.";
+        locked.className = "finding-locked";
+        locked.textContent = "Always hidden · locked high-risk";
+        locked.title = "KEEP is unavailable for credentials, tokens and secrets.";
         item.appendChild(locked);
       }
       list.appendChild(item);
@@ -529,6 +559,7 @@
     if (review) review.clear();
     review = null;
     result = null;
+    copied = false;
     reviewedInput = null;
     reviewedOptions = null;
     maskedOutput = "";
@@ -563,6 +594,7 @@
 
   function showReview(value, settings, applied, masked) {
     result = applied;
+    copied = false;
     maskedOutput = masked;
     reviewedInput = value;
     reviewedOptions = JSON.stringify(settings);
@@ -573,8 +605,8 @@
     setView(showPreview);
     enableExports();
     status.textContent = result.findings.length
-        ? "Analyzed locally — " + result.report.redacted + " redacted, " + result.report.kept +
-          " kept. Review findings and final output before Copy/download. Human review required."
+        ? "Done locally: " + result.report.redacted + " redacted, " + result.report.kept +
+          " kept. Check the result before you share it."
         : "No sensitive patterns detected by supported rules. Human review required; unknown secrets may remain.";
   }
 
@@ -619,6 +651,8 @@
       await navigator.clipboard.writeText(result.sanitized);
       if (token !== generation || !currentReview()) return;
       copy.textContent = "Copied";
+      copied = true;
+      metrics();
       status.textContent = "Copied final reviewed text, including KEEP decisions. Review where you paste it next.";
       copyTimer = setTimeout(resetCopy, 1800);
     } catch (error) {

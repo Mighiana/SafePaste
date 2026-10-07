@@ -246,6 +246,22 @@ test("review decisions invalidate pending copy feedback and revoke temporary dow
   assert.strictEqual(h.revoked.length, 1);
 });
 
+test("finding rationale is visible text and the Copy step resets after a new decision", async () => {
+  const h = buildHarness();
+  await sanitize(h, "email=review@example.test", "strict");
+  const steps = h.elements["flow-steps"];
+  assert.strictEqual(steps.getAttribute("data-stage"), "review");
+  const findingText = h.elements["findings-list"].textContent;
+  assert(findingText.includes("Why?") && findingText.includes("Rule "), "rationale must not depend on hover");
+  await h.elements["copy-button"].dispatch("click");
+  assert.strictEqual(steps.getAttribute("data-stage"), "copy");
+  const action = controls(h)[0];
+  action.value = "KEEP";
+  await action.dispatch("change");
+  assert.strictEqual(steps.getAttribute("data-stage"), "review");
+  assert(h.elements["findings-list"].textContent.includes("Rule "));
+});
+
 test("file picker and drag/drop clear old output and read only local supported files", async () => {
   for (const picker of [true, false]) {
     const h = buildHarness();
