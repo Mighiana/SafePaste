@@ -1,0 +1,97 @@
+# Runs the dependency-free SafePaste checks on repository fixtures only.
+# Nothing is installed (no npm/package.json); every input is synthetic and committed to the repo.
+# No step reads, uploads or scans private or user logs.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Runtime conditions
+        run: node -e "const os=require('os');console.log(process.version, os.platform()+'/'+os.arch(), os.cpus().length+' CPUs', os.cpus()[0].model)"
+      - name: Syntax, lint-like and type-contract checks
+        run: node evals/run-contract-checks.js
+      - name: Static zero-egress / no-storage checks
+        run: |
+          node evals/run-static-privacy-checks.js
+          node tests/test-static-privacy.js
+          node tests/test-hook.js
+      - name: Original academic commands (legacy evidence)
+        run: |
+          node tests/test-sanitizer.js
+          node evals/run-evals.js
+          node evals/graders/exact-property-grader.js
+          node evals/run-red-team.js
+          node evals/run-ui-smoke.js
+          node evals/run-product-behavior.js
+          node evals/run-accessibility-checks.js
+      - name: Engine, parser, policy, detector and UI tests
+        run: |
+          node tests/test-core.js
+          node tests/test-parsers.js
+          node tests/test-policies.js
+          node tests/test-detectors.js
+          node tests/test-pseudonyms.js
+          node tests/test-review-ui.js
+          node tests/test-worker.js
+          node tests/test-regressions.js
+      - name: Property tests (deterministic seed)
+        run: node tests/test-properties.js
+      - name: Corpora (true positive, false positive, ambiguous, adversarial, performance)
+        run: node evals/run-corpora.js
+      - name: Extended red-team
+        run: node evals/run-red-team-extended.js
+      - name: CLI
+        run: node tests/test-cli.js
+      - name: Performance / ReDoS regression bounds (quick)
+        run: node evals/run-benchmarks.js
+
+  # Example of the DevSecOps gate from docs/CLI.md on a committed synthetic build log:
+  # BUILD LOG -> safepaste --check -> findings? block publication : continue.
+  artifact-gate-example:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Raw synthetic build log must be blocked
+        run: |
+          set +e
+          node bin/safepaste.js --check evals/fixtures/ci/synthetic-build-log.txt
+          code=$?
+          set -e
+          echo "safepaste --check exit code: $code"
+          test "$code" -eq 1
+      - name: Sanitize, then gate the sanitized copy
+        run: |
+          mkdir -p out
+          node bin/safepaste.js evals/fixtures/ci/synthetic-build-log.txt -o out/build.sanitized.log --report out/privacy-report.json
+          node bin/safepaste.js --check out/build.sanitized.log
+      - name: Publish only the sanitized synthetic log and metadata report
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-sanitized-build-log
+          path: |
+            out/build.sanitized.log
+            out/privacy-report.json
+          retention-days: 3
+          if-no-files-found: error

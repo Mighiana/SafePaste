@@ -1,0 +1,8 @@
+SAMPLE / SYNTHETIC DATA - repository CI fixture, not a real build log. Every value is fake.
+2026-10-07T09:00:00Z level=info step=checkout commit=0000000 build_id=build-fake-0001 release=1.2.3.4
+2026-10-07T09:00:05Z level=info step=deps cache=hit request_id=req-fake-ci-0001
+2026-10-07T09:00:09Z level=warn step=deploy msg="retrying with debug env" DB_PASSWORD=FakeCiDbPassword_SYNTHETIC
+2026-10-07T09:00:10Z level=debug step=deploy url=postgres://ci_user:FakeCiConnPw_SYNTHETIC@db.example.test:5432/app
+Authorization: Bearer FAKE_CI_BEARER_SYNTHETIC_0000
+2026-10-07T09:00:12Z level=info step=notify email=ci.bot.fake@example.test client_ip=203.0.113.44
+2026-10-07T09:00:15Z level=info step=done duration_ms=1520 build_id=build-fake-0001
