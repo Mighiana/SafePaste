@@ -2,7 +2,8 @@
 
 UMD entry point remains `src/sanitizer.js`: `SafePasteSanitizer` in the browser,
 `require('./src/sanitizer')` in Node. No package install or additional browser
-scripts are required. UI integration is a later stage.
+scripts are required. Phase 5's browser UI consumes the review/policy API;
+see `REVIEW_UI_STAGE_RESULT.md` for that consumer's privacy and state contract.
 
 ## Detection/review API
 
@@ -144,7 +145,8 @@ no output and does not mutate the review. Unknown IDs/actions, non-plain-object
 maps and KEEP on a high-risk/overlapping credential finding are rejected. IDs
 belong to that review's original source; never reuse them after editing input.
 KEEP may reveal original text in the **explicitly returned output**, not in
-findings/report/preview metadata. A future UI must make that human choice clear.
+findings/report metadata. The phase 5 UI makes that choice explicit, masks all
+detected values in Preview, and uses the reviewed result for Copy/downloads.
 
 Final findings include `action`, `policyReason` (category/network/human decision),
 `allowKeep`, and IPv4 `networkKind`: `loopback`, `private` (RFC1918), `other`.

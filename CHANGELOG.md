@@ -1,5 +1,34 @@
 # Changelog
 
+## October 2026: later browser findings review extension (phase 5)
+
+Changed:
+Integrated the existing shared review API with findings metadata, eligible
+per-finding KEEP/REDACT, inspectable profiles/custom categories and format
+selection. Added all-detection masked Preview, stale-output invalidation,
+synthetic samples, native file picker, metadata privacy report and explicit
+sanitized.log/privacy-report.json downloads. Preserved original IPv4 behavior
+as visible Compatibility, Copy/Clear, shortcuts, line gutters and drag/drop.
+Extended mocked UI and static accessibility coverage without dropping original
+behavior assertions.
+
+Why:
+Humans need to understand detection and policy decisions before sharing.
+Preview must not expose detected values merely because final output keeps them;
+input/policy edits must never leave a prior result available to copy or export.
+
+Stakeholder impact:
+Reviewers can deliberately preserve eligible context, but final Copy/log
+downloads can include that context and still require human review. No-detection
+messages never guarantee safety. New UI uses no dependencies/network/persistent
+log storage; only explicitly requested reviewed output/report files are written.
+
+Mapped requirement:
+User extension phase 5; findings review, safe override, policy inspection,
+metadata report, local samples/file-picker/export controls and accessibility.
+No pseudonyms, new detectors, CSP, worker, CLI, deployment or browser-verification
+claim. Academic version and archived evidence remain unchanged.
+
 ## October 2026: later privacy-engineering core extension (phases 2–4)
 
 Changed:

@@ -6,7 +6,7 @@ SafePaste is a privacy-aware browser-based log sanitizer for developers, IT supp
 
 This repository was built as an academic Human-Centered AI software engineering project. The implementation is intentionally small, local-only, dependency-free, and auditable.
 
-## Later core engineering extension (October 2026)
+## Later engineering extension (October 2026)
 
 Phases 2–4 add a shared, dependency-free engine under the existing UMD entry
 point: original-source findings with accurate spans, deterministic overlap
@@ -15,15 +15,18 @@ metadata-only reports, and safe per-finding review overrides. Valid JSON escapin
 and layout are preserved where possible; full parsed credential values are
 redacted. These capabilities were **not part of the academic base version**.
 
-The browser still uses the legacy IPv4 checkbox/API; profile/review controls are
-engine APIs, **not yet a new UI**, CLI, worker, pseudonymizer or advanced detector
-set. Omitting a profile preserves legacy loopback behavior. Explicit strict
+Phase 5 adds a browser findings review workspace using that same core. The
+visibly selected Compatibility policy retains the original IPv4 checkbox
+behavior; explicit profiles and custom categories are available beside it.
+This is **not yet a CLI, worker, pseudonymizer or advanced detector set**.
+Omitting a profile in the engine preserves legacy loopback behavior. Explicit strict
 redacts all supported IPv4; support keeps RFC1918/loopback; incident keeps network
 evidence; custom exposes category/network controls. Credentials/tokens/secrets
 cannot be kept. Human review is still required.
 
 See [engine API and limits](docs/ENGINE_API.md) and
-[independent baseline/provenance contract](docs/EXTENSION_BASELINE.md).
+[independent baseline/provenance contract](docs/EXTENSION_BASELINE.md), plus
+[phase 5 UI behavior, checks and limitations](docs/REVIEW_UI_STAGE_RESULT.md).
 Do not export the legacy `sanitize()` result as a report: it contains original
 input. New `analyze()`/review reports expose metadata only.
 
@@ -37,33 +40,47 @@ See [docs/STAKEHOLDER_MAP.md](docs/STAKEHOLDER_MAP.md) for the stakeholder map a
 
 ## Privacy Architecture
 
-SafePaste runs entirely in the browser with no backend, no database, no analytics, no third-party scripts, no remote fonts, and no storage of pasted logs. Pasted content remains in page memory only while the page is open.
+SafePaste runs entirely in the browser with no backend, no database, no analytics, no third-party scripts, no remote fonts, and no automatic persistence of pasted logs. Pasted content stays in page memory. Copy and sanitized-log/report downloads occur only on explicit user action; no original-log export exists.
 
 Production files do not use `fetch`, `XMLHttpRequest`, `WebSocket`, browser storage APIs, cookies, IndexedDB, external resources, or `innerHTML`.
 
 ## Features
 
 - Redacts common credentials, explicit structured secret fields, tokens, emails, structured usernames, home-path usernames, and redaction-eligible IPv4 addresses.
-- Preserves useful context such as request IDs, build IDs, Unicode text, system paths, invalid IPv4-like values, loopback addresses, and narrow software version contexts.
+- Preserves useful context such as request IDs, build IDs, Unicode text, system paths, invalid IPv4-like values, and narrow software version contexts. Loopback preservation is policy-dependent.
 - Shows an editor-style privacy review workspace with original and sanitized panes, line-number gutters, category chips, and a review summary.
-- Provides `sanitized.log` and `preview.log` output views. `sanitized.log` keeps stable textual markers such as `[REDACTED_EMAIL]`; `preview.log` uses visual redaction bars without exposing original sensitive values.
+- Provides `sanitized.log` and `preview.log` output views. Final output uses stable markers such as `[REDACTED_EMAIL]` for REDACT decisions. Preview masks **all detected values**, even those explicitly kept in final output. Unknown sensitive values may remain in either view.
+- Shows findings with rule/reason, severity, line/column and action, without original values. Eligible findings permit local KEEP/REDACT review; high-risk credentials/tokens/secrets are locked to REDACT.
+- Provides inspectable Compatibility, Strict privacy, Support, Security incident and Custom policies and an explicit format selector.
+- Clears previous output, findings, report and overrides after input, format or policy edits; reanalysis is explicit.
 - Shows redaction count and detected categories.
-- Provides Clear and Copy controls.
+- Provides Clear and Copy controls and explicit `sanitized.log` / `privacy-report.json` downloads. Report exports contain metadata only, not original values. Copy/log downloads can include values kept by policy or by the reviewer.
 - Provides a scoped IPv4 toggle for privacy-versus-diagnostic-usefulness control.
-- Supports local-only drag-and-drop loading for text-like files using browser `FileReader`; unsupported files fail with inline status feedback.
+- Supports local-only drag-and-drop and a native file picker for text-like files using browser `FileReader`; unsupported/oversized files fail with inline status feedback. Samples are clearly labeled synthetic.
 - Supports keyboard shortcuts: Ctrl/Cmd+Enter to sanitize and Ctrl/Cmd+Shift+C to copy sanitized text.
 
 ## UI Architecture
 
 The final UI adopts a muted slate developer/security-tool shell inspired by the approved Claude-generated reference design: compact topbar, amber primary action, Local Only and No Network Egress messaging, detection-category chips, editor tabs, line gutters, status bar, and visual redaction preview. The color system intentionally avoids both a full black background and stark white cards.
 
-The Claude sanitizer implementation was not copied. The UI consumes the existing tested `src/sanitizer.js` module, and Copy always uses the sanitized plain-text textarea value rather than preview markup.
+The Claude sanitizer implementation was not copied. The UI consumes the existing tested `src/sanitizer.js` review API. Copy/downloads use the current final reviewed plain-text result, never preview markup. Entering Preview empties the hidden output textarea so intentionally kept values are not replicated in a hidden plain-text view. Findings and privacy reports render metadata only through safe DOM APIs.
+
+The findings panel shows 50 findings per page. File loading has a conservative
+2 MiB byte guardrail; analysis accepts at most 2,097,152 UTF-16 units, as declared
+by the engine. Analysis is still synchronous. These are limits, **not measured
+browser responsiveness claims**. Human review remains required even when no
+supported sensitive patterns are detected.
 
 ## IPv4 User Control
 
 By default, SafePaste redacts valid non-loopback IPv4 addresses and preserves `127.0.0.0/8` loopback addresses. The `Redact non-loopback IPv4 addresses` checkbox lets the user turn off network IPv4 redaction when exact network context is needed for troubleshooting.
 
-Manual Test 7 confirmed that this toggle is scoped: when IPv4 redaction is off, network IPs remain visible, but unrelated email and credential redaction still works.
+This toggle appears only for Compatibility. Changing it clears the previous
+review; press Sanitize again. The original scoped behavior is preserved: network
+IPs can remain visible while email and credential redaction still works.
+Strict redacts supported loopback/private IPv4 too; Support preserves RFC1918
+and loopback, and Security incident preserves IPv4 evidence. Those preserving
+policies are not automatically suitable for public sharing.
 
 ## How To Run
 
@@ -95,6 +112,7 @@ node tests/test-core.js
 node tests/test-parsers.js
 node tests/test-policies.js
 node tests/test-hook.js
+node tests/test-review-ui.js
 node evals/run-evals.js
 node evals/graders/exact-property-grader.js
 node evals/run-red-team.js

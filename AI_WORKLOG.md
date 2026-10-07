@@ -4,6 +4,40 @@ This file records meaningful AI-assisted engineering decisions and real failures
 
 ## Entries
 
+### 2026-10-07: Later browser review extension, phase 5 only
+
+- Started a new branch from the phase 4 handoff; independently ran all seven
+  inherited commands before edits: unit 38/38, eval 73/73, exact 91/91 across
+  21 cases, red-team 15/15, mocked smoke pass, product 5/5, static accessibility
+  10/10. No historical evidence or engine behavior was changed.
+- Replaced the browser's legacy adapter consumption with closure-backed
+  createReview/apply/clear. Kept a visibly selected Compatibility policy to
+  preserve original loopback/toggle behavior; added inspectable explicit
+  profiles, custom categories and format selection.
+- Preview decision: use a separate all-REDACT apply on the same original-source
+  findings, never re-scan final output. This masks policy/manual KEEP findings,
+  including escaped JSON. Copy/downloads use the final reviewed plain text.
+  Entering Preview clears the hidden output textarea. Findings/report contain
+  metadata only; no original values are inserted into those DOM trees.
+- State decision: input/policy/format changes destroy the review and overrides,
+  invalidate Copy/exports and clear output/report. Async clipboard feedback
+  and file reads cannot resurrect earlier state. Clear/replacement confirmation
+  follows AGENTS.md's destructive-action rule.
+- Added explicit fixed-filename log/report exports with short-lived, revoked
+  blob URLs, native file picker alongside drop, synthetic-only samples,
+  metadata counts, 50-finding pages, tab keyboard navigation and live status.
+  No dependencies, network, automatic storage or backend were introduced.
+- Mock migration initially broke the original JSON.stringify clear-state
+  assertion through circular parent pointers. Fixed the mock with non-enumerable
+  parent links; preserved every original behavior assertion. IPv4 change now
+  requires explicit Sanitize, as required for stale-result invalidation; all
+  prior post-sanitization IPv4/email/credential assertions remain.
+- Hook invocation initially failed because the inherited script is mode 100644.
+  Ran the exact hook through sh before committing, not bypassing or modifying it.
+- Validation here is Node/mock/static only. Real browser layout, contrast,
+  accessibility, file/download and clipboard behavior remain the parent testing
+  agent's responsibility. No dev server, browser, recording, PR or deploy ran.
+
 ### 2026-10-07: Later shared-core extension, phases 2–4 only
 
 - Task: Audit all current and historical repository files, reproduce seven
