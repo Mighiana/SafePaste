@@ -28,7 +28,9 @@ webhook secrets, URL secret parameters, validated IPv6 and MAC addresses
 Phase 9 moves analysis to a classic local Web Worker (`src/worker.js`, same engine,
 16 MiB limit, Cancel by termination) with a synchronous 2 MiB fallback when workers
 are blocked; limits fail closed and [benchmarks are measured, not estimated](docs/PERFORMANCE.md).
-Unknown secret formats can still be missed.
+Phase 10 adds a dependency-free CLI on the same engine
+(`node bin/safepaste.js server.log --profile strict --check`; exit 0 clean, 1 redactable
+findings, 2 errors; [details](docs/CLI.md)). Unknown secret formats can still be missed.
 Omitting a profile in the engine preserves legacy loopback behavior. Explicit strict
 redacts all supported IPv4; support keeps RFC1918/loopback; incident keeps network
 evidence; custom exposes category/network controls. Credentials/tokens/secrets
@@ -118,6 +120,16 @@ Then open:
 http://127.0.0.1:8765/
 ```
 
+## Running the CLI
+
+```text
+node bin/safepaste.js server.log -o server.sanitized.log --report privacy-report.json
+cat server.log | node bin/safepaste.js --mode pseudonymization
+node bin/safepaste.js --check server.log; echo $?
+```
+
+See [docs/CLI.md](docs/CLI.md) for options, safe-write rules and exit codes.
+
 ## How To Test
 
 Run from the `SafePaste/` directory:
@@ -131,6 +143,7 @@ node tests/test-hook.js
 node tests/test-review-ui.js
 node tests/test-static-privacy.js
 node tests/test-worker.js
+node tests/test-cli.js
 node evals/run-benchmarks.js
 node evals/run-evals.js
 node evals/graders/exact-property-grader.js

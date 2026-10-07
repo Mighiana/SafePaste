@@ -501,3 +501,20 @@ Human response
 
 Permanent control added
 -> Updated path username tests/evals and documented that historical evidence files preserve prior observed labels.
+
+### Phase 9-10 failures caught by existing tests
+
+AI behavior
+-> The worker refactor replaced the input-limit status text with a friendlier message that dropped the `INPUT_LIMIT` code. The first large limit tier allowed only 400,000 fields, which made 10 MiB auto-format logs fail with `FIELD_LIMIT`. The CLI phase also added a `package.json` for an npm `bin` entry.
+
+Why it was problematic
+-> Users and tests rely on the explicit code. A field cap below the measured size made the 16 MiB claim false for structured logs. A manifest contradicts EV-034, even with no dependencies in it.
+
+How it was detected
+-> `tests/test-review-ui.js` ("input limits fail closed"), `evals/run-benchmarks.js --full` and `evals/run-evals.js` (EV-034 FAIL).
+
+Human response
+-> Put the code back in the message without changing the assertion. Raise the large-tier field limit to 1,048,576 and record measured results in `docs/PERFORMANCE.md`. Remove `package.json` and keep EV-034 as it was; the CLI runs as `node bin/safepaste.js`.
+
+Permanent control added
+-> `tests/test-worker.js`, `tests/test-cli.js` (which asserts there is no manifest), the benchmark bounds and the unchanged EV-034.

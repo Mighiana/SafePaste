@@ -16,7 +16,10 @@ Credentials/tokens/secrets always use full redaction markers and still reject KE
 `policy.mode` and `report.mode` make the selected mode inspectable. Actions remain
 REDACT/KEEP: REDACT uses the selected replacement; KEEP explicitly returns originals.
 
-`createSession()` exposes `createReview(input, options)` and `clear()`. Its maps
+`createSession()` exposes `createReview(input, options)`, `clear()` and the
+resolved `limits`. `createSession({ limits: "large" })` (phase 9, used by the local
+worker and CLI) raises input to 16,777,216 code units and fields to 1,048,576; any
+other session option fails with `INVALID_SESSION_OPTIONS`. See docs/PERFORMANCE.md. Its maps
 survive review edits/individual review.clear() until session.clear(), which resets
 numbering and clears all active reviews. The browser owns one such session per tab;
 Clear and page exit reset it. Reload constructs a fresh session. Standalone

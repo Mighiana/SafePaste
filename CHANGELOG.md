@@ -1,5 +1,27 @@
 # Changelog
 
+## October 2026: later CLI extension (phase 10)
+
+Changed:
+Added bin/safepaste.js, a dependency-free Node CLI that uses the same engine as
+the browser, with the large limit tier. It reads a file, `-` or stdin and
+supports --profile, --mode, --format, custom --category and network flags,
+--check, --output, --report and -q. Default policy is strict redaction. Exit
+codes: 0 for success (with --check, no effective REDACT findings), 1 when
+--check finds a finding redacted under the active policy (kept-by-policy
+detections do not count), 2 for usage, I/O, encoding, limit or engine errors.
+Output and report files are created exclusively with mode 0600. They never
+overwrite existing paths or the source and are written only after analysis
+succeeds; if any write fails, every file created by the run is removed.
+Errors print fixed codes, never input or raw messages. Added docs/CLI.md and
+tests/test-cli.js. No package.json was added: a dependency-free one with a bin
+entry was tried and broke EV-034 ("No runtime dependency manifest is
+introduced"), so the CLI runs as node bin/safepaste.js and EV-034 is unchanged.
+
+Why:
+Browser and automation use should share one engine, so their results do not
+drift. CI gates need a documented exit-code contract that fails closed.
+
 ## October 2026: later worker / performance extension (phase 9)
 
 Changed:
