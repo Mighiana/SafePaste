@@ -51,6 +51,12 @@ SafePaste runs entirely in the browser with no backend, no database, no analytic
 
 Production files do not use `fetch`, `XMLHttpRequest`, `WebSocket`, browser storage APIs, cookies, IndexedDB, external resources, or `innerHTML`.
 
+Later extension (phase 8): `index.html` carries a restrictive meta Content
+Security Policy (`connect-src 'none'`, `object-src 'none'`, `base-uri 'none'`,
+`form-action 'none'`, no `unsafe-inline`), and `node evals/run-static-privacy-checks.js`
+turns the statements above into an automated check. Meta CSP cannot enforce
+`frame-ancestors`; see [zero-egress controls and header-only limits](docs/ZERO_EGRESS.md).
+
 ## Features
 
 - Redacts common credentials, explicit structured secret fields, tokens, emails, structured usernames, home-path usernames, and redaction-eligible IPv4 addresses.
@@ -120,12 +126,14 @@ node tests/test-parsers.js
 node tests/test-policies.js
 node tests/test-hook.js
 node tests/test-review-ui.js
+node tests/test-static-privacy.js
 node evals/run-evals.js
 node evals/graders/exact-property-grader.js
 node evals/run-red-team.js
 node evals/run-ui-smoke.js
 node evals/run-product-behavior.js
 node evals/run-accessibility-checks.js
+node evals/run-static-privacy-checks.js
 ```
 
 To write final eval results:

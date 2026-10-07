@@ -1,5 +1,32 @@
 # Changelog
 
+## October 2026: later zero-egress / CSP enforcement extension (phase 8)
+
+Changed:
+Added a restrictive meta CSP to index.html (default/script/style/img/worker
+'self'; connect/object/frame/child/font/media/manifest/base-uri/form-action
+'none'; no unsafe-inline). Added evals/run-static-privacy-checks.js, a recursive
+static gate for network APIs, storage/cookies/cache, unsafe DOM sinks, script
+loaders, external assets, CSP shape, CLI write/network rules and package
+dependencies, with tests/test-static-privacy.js mutation tests. Strengthened
+the pre-commit hook: standalone/nested layout detection replaces the dead
+SafePaste/ path rewrite, fixtures are scanned with a synthetic-marker rule
+instead of skipped, archived history/SPEC_v1.md changes block, and the staged
+static checker runs on the staged snapshot. The verification server sends the
+same CSP plus header-only frame-ancestors and hardening headers.
+
+Why:
+"No network egress" and "no persistent log storage" become testable
+architecture properties instead of README statements.
+
+Stakeholder impact:
+No behavior change for users. Meta CSP cannot enforce frame-ancestors or
+sandbox; this is documented in docs/ZERO_EGRESS.md rather than claimed.
+Regex static checks are a regression gate, not proof against obfuscated code.
+
+Mapped requirement:
+User extension phase 8 (zero-egress enforcement, CSP, static regression checks).
+
 ## October 2026: later high-confidence detector extension (phase 7)
 
 Changed:
