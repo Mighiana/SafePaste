@@ -67,6 +67,54 @@ The free-text version lookbehind is bounded to 160 code units; unusually distant
 prose context may be redacted conservatively. Email components are bounded to
 avoid unbounded repeated scans of hostile dotted input.
 
+## Phase 7 high-confidence detectors
+
+Added 14 catalog entries (catalog is now 26; the original 12 keep their order and
+markers). All use bounded scanners/validators, never entropy guessing. Overlaps are
+merged by priority: `PRIVATE_KEY` (120) outranks everything, so secrets inside a
+key block produce one finding/replacement. Credentials/tokens/secrets stay locked
+(REDACT only, never pseudonymized); IPv6/MAC are `network` review identifiers.
+Report `engineVersion` is 7.
+
+| Category | Exact rule | Marker |
+|---|---|---|
+| GITHUB_TOKEN | `gh[pousr]_` + exactly 36 alphanumerics, or `github_pat_` + 22 + `_` + 59, word-bounded | `[REDACTED_GITHUB_TOKEN]` |
+| GOOGLE_API_KEY | `AIza` + exactly 35 of `[0-9A-Za-z_-]`, bounded | `[REDACTED_GOOGLE_API_KEY]` |
+| CLOUD_CREDENTIAL | AccountKey / SharedAccessKey / SharedAccessSignature in a `;`-chain (value >= 8), or explicit aws_secret_access_key / secret_access_key / aws_session_token field (16-4096 base64 chars) | `[REDACTED_CLOUD_CREDENTIAL]` |
+| URL_CREDENTIALS | `scheme://user:password@` userinfo (non-empty password; empty user allowed); host/port/path kept | `[REDACTED_URL_CREDENTIALS]` |
+| CONNECTION_STRING_PASSWORD | Password / Pwd / Passwd only inside a `;`-chain of >= 2 pairs that contains Driver, DSN, Server, Data Source, Provider, Database, Initial Catalog, Host, Hostname, Address/Addr or Network Address; `{...}` and quoted values; JDBC `;` `?` `&` params; Oracle `jdbc:oracle:thin:user/pass@`. Uid / User Id / User / Username there become USERNAME | `[REDACTED_PASSWORD]` |
+| PRIVATE_KEY | `-----BEGIN [RSA, DSA, EC, OPENSSH, ENCRYPTED, PGP ]PRIVATE KEY[ BLOCK]-----` through the matching END line; no END redacts conservatively to end of input, except inside a JSON string where it stops at the end of that value | `[REDACTED_PRIVATE_KEY]` |
+| SESSION_TOKEN | explicit session, session_id/token/key, sessionid, jsessionid, phpsessid, asp.net_sessionid, csrf_token, xsrf_token field with token-like value (8+ chars with letter and digit, or 24+ chars) | `[REDACTED_SESSION_TOKEN]` |
+| COOKIE_VALUE | each value in a `Cookie:` header; only the first pair of `Set-Cookie:` (attributes kept); structured Cookie fields | `[REDACTED_COOKIE]` |
+| HEADER_CREDENTIAL | x-auth-token, auth-token, x-access-token, x-session-token, x-csrf-token, x-xsrf-token, x-amz-security-token, x-goog-api-key (x-api-key keeps legacy `[REDACTED_API_KEY]`) | `[REDACTED_HEADER_CREDENTIAL]` |
+| BASIC_CREDENTIALS | `Basic <base64>` anywhere that a bounded decoder turns into printable ASCII `user:password`, both sides non-empty. Authorization / Proxy-Authorization headers keep the legacy whole-header marker | `[REDACTED_BASIC_CREDENTIALS]` |
+| WEBHOOK_SECRET | path after hooks.slack.com/services, /workflows or /triggers; discord(app).com/api/[vN/]webhooks; *.webhook.office.com/webhookb2; outlook.office(365).com/webhook (>= 8 chars) | `[REDACTED_WEBHOOK_SECRET]` |
+| URL_QUERY_SECRET | value of exact query keys token, access_token, refresh_token, id_token, auth_token, api_key, apikey, client_secret, secret, password, passwd, sig, signature, x-amz-signature, x-amz-security-token, x-goog-signature, session, sessionid, session_id, jsessionid (>= 4 chars) | `[REDACTED_URL_SECRET]` |
+| IPV6_ADDRESS | RFC 4291 text parsed into 8 hextets (one `::`, optional dotted IPv4 tail, 2-45 chars, contains a decimal digit, not all-zero); bracketed URL hosts; link-local `%zone` included | `[REDACTED_IPV6_ADDRESS]` / `[IPV6_n]` |
+| MAC_ADDRESS | six hex octets, one consistent `:` or `-` separator, at least one A-F letter | `[REDACTED_MAC_ADDRESS]` / `[MAC_n]` |
+
+.env-style secret-suffix keys map to existing categories: `*_PASSWORD`/`*_PASSWD` ->
+PASSWORD; `*_API_KEY`, `*_SECRET_KEY`, `*_ACCESS_TOKEN`, `*_CLIENT_SECRET` -> API_KEY;
+`*_SECRET`, `*_AUTH_TOKEN`, `*_REFRESH_TOKEN`, `*_PRIVATE_KEY` -> SECRET. Bare `PWD` is
+never classified as a password: `PWD=/home/<user>/...` keeps the legacy path rule.
+
+IPv6 `networkKind`: loopback (::1), unique-local (fc00::/7), link-local (fe80::/10);
+IPv4-mapped (::ffff:a.b.c.d) uses the IPv4 class; otherwise other. MAC is hardware.
+Omitted profile (legacy) preserves ::1 like 127/8; support preserves loopback, private
+and unique-local; incident preserves network evidence; strict redacts all.
+`redactIpAddresses:false` also disables IPv6/MAC. Pseudonyms normalize IPv6 (case, zero
+compression) and MAC (case, separator), so equivalent forms share a number. Explicit
+version/release and request/trace/build ID fields exempt network identifiers.
+
+Limitations: unknown token formats, other webhook providers, connection strings
+without a recognised marker key or not `;`-delimited, and other header/cookie key names
+are not detected. Unbracketed `addr:port` after IPv6 (`2001:db8::1:8080`) is read as one
+address. All-decimal MACs (`10:20:30:40:50:60`), dot-separated Cisco MACs and hex-word
+IPv6 without digits (`dead::beef`) are deliberately not flagged. A URL whose password
+is already a marker is left unchanged (idempotence), so its username stays visible.
+A detected user:password URL drops weaker matches starting inside the userinfo so the
+host stays readable. Prefixed tokens are length-checked only; no checksum validation.
+
 ## Structured parsing (phase 3)
 
 `options.format` is `auto` (default), `text`, `json`, `env`, `headers`, or

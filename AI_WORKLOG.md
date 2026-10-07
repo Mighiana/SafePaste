@@ -1,5 +1,21 @@
 # AI Worklog
 
+## Later extension — phase 7 (2026-10-07)
+
+Added 14 bounded detectors (catalog 12 -> 26, original order/markers retained).
+Real failures found and fixed while writing tests/test-detectors.js:
+- Hex-word text such as dead::beef parsed as IPv6 -> now requires a decimal digit.
+- Build IDs like 10:20:30:40:50:60 matched as MAC -> now requires an A-F letter.
+- Re-sanitizing user:[REDACTED_PASSWORD]@ re-wrapped the marker -> idempotence check.
+- user:pass@host also matched EMAIL; the union merge hid the host -> weaker matches
+  starting inside detected userinfo are dropped.
+- Two of my own test assertions were wrong (a tautological URL check; X-Api-Key
+  expected HEADER_CREDENTIAL though legacy API_KEY has higher priority by design).
+  Corrected to the intended behavior; no assertion removed.
+test-core catalog length updated 12 -> 26 with an exact check of the original 12.
+Bare PWD stays the legacy path rule; only connection-string chains classify Pwd.
+No dependencies, network primitives, storage, browser/server setup or PR.
+
 ## Later extension — phase 6 (2026-10-07)
 
 Verified review-UI tip 9581e18 and core ancestry; clean new branch from that tip.

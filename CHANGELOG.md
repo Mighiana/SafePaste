@@ -1,5 +1,46 @@
 # Changelog
 
+## October 2026: later high-confidence detector extension (phase 7)
+
+Changed:
+Added 14 bounded detector categories (GITHUB_TOKEN, GOOGLE_API_KEY,
+CLOUD_CREDENTIAL, URL_CREDENTIALS, CONNECTION_STRING_PASSWORD, PRIVATE_KEY,
+SESSION_TOKEN, COOKIE_VALUE, HEADER_CREDENTIAL, BASIC_CREDENTIALS,
+WEBHOOK_SECRET, URL_QUERY_SECRET, IPV6_ADDRESS, MAC_ADDRESS) plus explicit
+.env secret-suffix keys. Private-key blocks redact as one block. IPv6 uses a
+bounded hextet parser with loopback/unique-local/link-local/mapped classes.
+URL userinfo no longer lets an email match widen over host context.
+Report engineVersion is 7.
+
+Why:
+These formats appear in real build/support logs and were previously missed or
+only partially redacted (e.g. private key bodies after the header line).
+
+Stakeholder impact:
+More credentials are removed by default; all new secret categories are locked.
+IPv6/MAC follow visible network policy. Bare PWD keeps legacy path behavior.
+Existing 12 detectors, markers and original suites are unchanged.
+
+Mapped requirement:
+User extension phase 7. tests/test-detectors.js covers formats, near-misses,
+preserved versions/IDs, overlaps, idempotence and pathological inputs.
+
+## October 2026: later session-local pseudonymization extension (phase 6)
+
+Changed:
+Added optional mode 'pseudonymization' and createSession(). Context identifiers
+(email, usernames, path usernames, network) map to [EMAIL_n]/[USERNAME_n]/
+[PATH_n]/[IP_n] markers held only in closure memory; secrets stay redacted.
+Browser owns one session per tab; Clear/page exit reset it; mode edits revoke
+stale exports.
+
+Why:
+Keeps relationships in logs readable without preserving identities.
+
+Stakeholder impact:
+Pseudonyms reveal structure and are not anonymization; markers are not
+authenticated. No storage or network use was added.
+
 ## October 2026: later browser findings review extension (phase 5)
 
 Changed:

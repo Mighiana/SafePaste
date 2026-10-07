@@ -20,7 +20,12 @@ visibly selected Compatibility policy retains the original IPv4 checkbox
 behavior; explicit profiles and custom categories are available beside it.
 Phase 6 adds optional in-memory session-local pseudonymization of context identifiers;
 secrets stay fully redacted. Clear/reload resets mappings; mode edits disable stale
-exports. This is **not yet a CLI, worker or advanced detector set**.
+exports. Phase 7 adds bounded high-confidence detectors: GitHub/Google tokens,
+Azure/AWS cloud keys, credential URLs, JDBC/ODBC passwords, whole private-key blocks,
+session/cookie/header credentials, decodable Basic credentials, Slack/Discord/Teams
+webhook secrets, URL secret parameters, validated IPv6 and MAC addresses
+([exact rules and limitations](docs/ENGINE_API.md#phase-7-high-confidence-detectors)).
+This is **not yet a CLI or worker**, and unknown secret formats can still be missed.
 Omitting a profile in the engine preserves legacy loopback behavior. Explicit strict
 redacts all supported IPv4; support keeps RFC1918/loopback; incident keeps network
 evidence; custom exposes category/network controls. Credentials/tokens/secrets

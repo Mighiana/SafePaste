@@ -19,7 +19,21 @@
     EMAIL: "[REDACTED_EMAIL]",
     USERNAME: "[REDACTED_USERNAME]",
     IP_ADDRESS: "[REDACTED_IP_ADDRESS]",
-    PATH_OR_USERNAME: "[REDACTED_USERNAME]"
+    PATH_OR_USERNAME: "[REDACTED_USERNAME]",
+    GITHUB_TOKEN: "[REDACTED_GITHUB_TOKEN]",
+    GOOGLE_API_KEY: "[REDACTED_GOOGLE_API_KEY]",
+    CLOUD_CREDENTIAL: "[REDACTED_CLOUD_CREDENTIAL]",
+    URL_CREDENTIALS: "[REDACTED_URL_CREDENTIALS]",
+    CONNECTION_STRING_PASSWORD: "[REDACTED_PASSWORD]",
+    PRIVATE_KEY: "[REDACTED_PRIVATE_KEY]",
+    SESSION_TOKEN: "[REDACTED_SESSION_TOKEN]",
+    COOKIE_VALUE: "[REDACTED_COOKIE]",
+    HEADER_CREDENTIAL: "[REDACTED_HEADER_CREDENTIAL]",
+    BASIC_CREDENTIALS: "[REDACTED_BASIC_CREDENTIALS]",
+    WEBHOOK_SECRET: "[REDACTED_WEBHOOK_SECRET]",
+    URL_QUERY_SECRET: "[REDACTED_URL_SECRET]",
+    IPV6_ADDRESS: "[REDACTED_IPV6_ADDRESS]",
+    MAC_ADDRESS: "[REDACTED_MAC_ADDRESS]"
   };
 
   function isValidIpv4(candidate) {
@@ -142,7 +156,21 @@
     ["EMAIL", "email", "medium", "Email address", "Email-address syntax", 60],
     ["USERNAME", "usernames", "medium", "Account identity", "Explicit username field", 60],
     ["PATH_OR_USERNAME", "paths", "medium", "Home-directory identity", "Username component in a home-directory path", 60],
-    ["IP_ADDRESS", "network", "review", "IPv4 address", "Validated IPv4 syntax; contextual policy required", 20]
+    ["IP_ADDRESS", "network", "review", "IPv4 address", "Validated IPv4 syntax; contextual policy required", 20],
+    ["GITHUB_TOKEN", "tokens", "high", "GitHub token", "GitHub token prefix with exact length (gh[pousr]_ + 36, github_pat_ 22_59)", 85],
+    ["GOOGLE_API_KEY", "credentials", "high", "Google API key", "AIza prefix with exact 39-character key length", 85],
+    ["CLOUD_CREDENTIAL", "credentials", "high", "Cloud credential", "Azure AccountKey/SharedAccessKey/SharedAccessSignature field or explicit AWS secret/session field", 95],
+    ["URL_CREDENTIALS", "credentials", "high", "URL credentials", "user:password@ userinfo in a scheme:// URL such as a database URL", 95],
+    ["CONNECTION_STRING_PASSWORD", "credentials", "high", "Connection-string password", "Password/Pwd field inside a structured JDBC URL or ;-delimited ODBC/ADO connection string", 95],
+    ["PRIVATE_KEY", "secrets", "high", "Private key block", "Private-key BEGIN marker through matching END; unclosed blocks redact to end of input (or JSON string value)", 120],
+    ["SESSION_TOKEN", "tokens", "high", "Session credential", "Explicit session/CSRF field with token-like value", 90],
+    ["COOKIE_VALUE", "tokens", "high", "Cookie value", "Value inside an explicit Cookie or Set-Cookie header", 90],
+    ["HEADER_CREDENTIAL", "credentials", "high", "Header credential", "Explicit API-key or auth-token header", 95],
+    ["BASIC_CREDENTIALS", "credentials", "high", "Basic credentials", "Basic scheme value that decodes to printable user:password", 95],
+    ["WEBHOOK_SECRET", "tokens", "high", "Webhook secret", "Secret path of a Slack, Discord or Microsoft Teams/Office 365 webhook URL", 90],
+    ["URL_QUERY_SECRET", "tokens", "high", "URL secret parameter", "Explicit secret query parameter (token, signature, password...) in a URL", 75],
+    ["IPV6_ADDRESS", "network", "review", "IPv6 address", "Validated RFC 4291 IPv6 text syntax; contextual policy required", 21],
+    ["MAC_ADDRESS", "network", "review", "MAC address", "Six hex octets with one consistent separator", 21]
   ];
   const DETECTORS = Object.freeze(DEFINITIONS.map(function (item) {
     return Object.freeze({ id: item[0].toLowerCase(), category: item[0], control: item[1],
@@ -213,16 +241,16 @@
       }
     }
     const descriptions = {
-      legacy: "Compatibility: preserve loopback; redact other IPv4 unless explicitly disabled.",
-      strict: "Redact all supported sensitive categories including loopback IPv4.",
-      support: "Redact credentials/identity; preserve RFC1918 private and loopback IPv4 for troubleshooting.",
-      incident: "Redact credentials/identity; preserve IPv4 network evidence. Not a public-sharing default.",
+      legacy: "Compatibility: preserve loopback; redact other IPv4 (plus IPv6/MAC) unless explicitly disabled.",
+      strict: "Redact all supported sensitive categories including loopback IPv4/IPv6.",
+      support: "Redact credentials/identity; preserve RFC1918 private, IPv6 unique-local and loopback addresses for troubleshooting.",
+      incident: "Redact credentials/identity; preserve IPv4/IPv6/MAC network evidence. Not a public-sharing default.",
       custom: "Explicit category/network controls; credentials, tokens and secrets remain locked to REDACT."
     };
     return Object.freeze({ name: name, mode: mode, description: descriptions[name],
       categories: Object.freeze(categories), network: Object.freeze(network), lockedCategories: LOCKED,
-      networkClassification: "loopback 127/8; private RFC1918; other (not a routability claim)",
-      diagnosticExceptions: "Explicit version/release and parsed request/trace/build ID fields exempt IPv4 only" });
+      networkClassification: "loopback 127/8 and ::1; private RFC1918; unique-local fc00::/7; link-local fe80::/10; IPv4-mapped IPv6 uses the IPv4 class; MAC hardware; other (not a routability claim)",
+      diagnosticExceptions: "Explicit version/release and parsed request/trace/build ID fields exempt network identifiers (IPv4/IPv6/MAC) only" });
   }
 
   function ipv4Kind(value) {
@@ -230,6 +258,51 @@
     if (octets[0] === 127) return "loopback";
     if (octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
       (octets[0] === 192 && octets[1] === 168)) return "private";
+    return "other";
+  }
+
+  function hextets(part) {
+    if (part === "") return [];
+    const pieces = part.split(":");
+    const groups = [];
+    for (let index = 0; index < pieces.length; index += 1) {
+      const piece = pieces[index];
+      if (index === pieces.length - 1 && piece.indexOf(".") !== -1) {
+        if (!isValidIpv4(piece)) return null;
+        const octets = piece.split(".").map(Number);
+        groups.push(octets[0] * 256 + octets[1], octets[2] * 256 + octets[3]);
+      } else if (/^[0-9A-Fa-f]{1,4}$/.test(piece)) {
+        groups.push(parseInt(piece, 16));
+      } else {
+        return null;
+      }
+    }
+    return groups;
+  }
+
+  // Bounded RFC 4291 text parser: returns eight 16-bit groups or null.
+  function parseIpv6(text) {
+    if (text.length < 2 || text.length > 45) return null;
+    const double = text.indexOf("::");
+    if (double === -1) {
+      const groups = hextets(text);
+      return groups && groups.length === 8 ? groups : null;
+    }
+    if (text.indexOf("::", double + 1) !== -1 || text.slice(0, double).indexOf(".") !== -1) return null;
+    const left = hextets(text.slice(0, double));
+    const right = hextets(text.slice(double + 2));
+    if (!left || !right || left.length + right.length > 7) return null;
+    return left.concat(new Array(8 - left.length - right.length).fill(0), right);
+  }
+
+  function ipv6Kind(groups) {
+    const prefixZero = groups.slice(0, 5).every(function (group) { return group === 0; });
+    if (prefixZero && groups[5] === 0 && groups[6] === 0 && groups[7] === 1) return "loopback";
+    if (prefixZero && groups[5] === 0xffff) {
+      return ipv4Kind([groups[6] >> 8, groups[6] & 255, groups[7] >> 8, groups[7] & 255].join("."));
+    }
+    if ((groups[0] & 0xffc0) === 0xfe80) return "link-local";
+    if ((groups[0] & 0xfe00) === 0xfc00) return "unique-local";
     return "other";
   }
 
@@ -406,6 +479,15 @@
     if (/^secret$/i.test(key)) return "SECRET";
     if (/^(?:username|user[_-]?name|user)$/i.test(key)) return "USERNAME";
     if (/^authorization$/i.test(key)) return "AUTHORIZATION_HEADER";
+    if (/^proxy-authorization$/i.test(key)) return "AUTHORIZATION_HEADER";
+    if (/^(?:aws_secret_access_key|secret_access_key|aws_session_token|accountkey|sharedaccesskey|sharedaccesssignature)$/i.test(key)) return "CLOUD_CREDENTIAL";
+    if (/^(?:x-api-key|x-auth-token|auth-token|x-access-token|x-session-token|x-csrf-token|x-xsrf-token|x-amz-security-token|x-goog-api-key)$/i.test(key)) return "HEADER_CREDENTIAL";
+    if (/^(?:session(?:[_-]?(?:id|token|key))?|sessionid|jsessionid|phpsessid|asp\.net_sessionid|csrf[_-]?token|xsrf[_-]?token)$/i.test(key)) return "SESSION_TOKEN";
+    if (/^(?:set-)?cookie$/i.test(key)) return "COOKIE";
+    // Explicit secret-suffix assignments (.env style); bare PWD and *_TOKENS stay unclassified.
+    if (/^[A-Za-z][A-Za-z0-9_.-]{0,62}_(?:PASSWORD|PASSWD)$/i.test(key)) return "PASSWORD";
+    if (/^[A-Za-z][A-Za-z0-9_.-]{0,62}_(?:API_?KEY|SECRET_KEY|ACCESS_TOKEN|CLIENT_SECRET)$/i.test(key)) return "API_KEY";
+    if (/^[A-Za-z][A-Za-z0-9_.-]{0,62}_(?:SECRET|AUTH_TOKEN|REFRESH_TOKEN|PRIVATE_KEY)$/i.test(key)) return "SECRET";
     return null;
   }
 
@@ -424,7 +506,8 @@
       }
       return low < units.length && units[low].start <= candidate.start && units[low].end >= candidate.end;
     }
-    const candidates = parsed.format === "json" ? [] : collect(source, options).filter(function (candidate) { return !overlapsUnit(candidate); });
+    // Context-dependent detectors (chains, cookies, URLs, blocks) keep source-level matches; overlaps merge later.
+    const candidates = parsed.format === "json" ? [] : collect(source, options).filter(function (candidate) { return candidate.contextual || !overlapsUnit(candidate); });
     units.forEach(function (unit) {
       function add(start, end, detector, networkKind, value) {
         if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
@@ -434,14 +517,17 @@
           replacement: parsed.format === "json" && !unit.quoted ? JSON.stringify(detector.replacement) : detector.replacement });
       }
       const category = explicitCategory(unit.key);
-      const minimum = category === "API_KEY" ? 12 : category === "AUTHORIZATION_HEADER" ? 8 : 3;
+      const minimum = category === "API_KEY" ? 12 : ["AUTHORIZATION_HEADER", "HEADER_CREDENTIAL", "CLOUD_CREDENTIAL"].indexOf(category) !== -1 ? 8 : 3;
       const validIdentity = category !== "USERNAME" || /^[\p{L}\p{N}][\p{L}\p{N}\p{M}._-]{2,63}$/u.test(unit.value);
-      if (category && !existingMarker(unit.value) && validIdentity && unit.value.length >= minimum && !(parsed.format === "json" && unit.value === "null" && !unit.quoted)) {
+      const validToken = category !== "SESSION_TOKEN" || tokenLike(unit.value);
+      if (category === "COOKIE" && !unit.isKey) {
+        scanCookies(unit.value, 0, /^set-/i.test(unit.key), function (start, end, name) { add(start, end, BY_CATEGORY[name]); });
+      } else if (category && !existingMarker(unit.value) && validIdentity && validToken && unit.value.length >= minimum && !(parsed.format === "json" && unit.value === "null" && !unit.quoted)) {
         add(0, unit.value.length, BY_CATEGORY[category]);
       }
       collect(unit.value, options).forEach(function (candidate) {
-        if (candidate.detector.category === "IP_ADDRESS" && diagnosticKey(unit.key)) return;
-        add(candidate.start, candidate.end, candidate.detector, candidate.networkKind);
+        if (candidate.detector.control === "network" && diagnosticKey(unit.key)) return;
+        add(candidate.start, candidate.end, candidate.detector, candidate.networkKind, candidate.value);
       });
     });
     return candidates;
@@ -471,8 +557,283 @@
     }
   }
 
+  const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const CONNECTION_MARKERS = new Set(["driver", "dsn", "server", "data source", "provider", "database",
+    "initial catalog", "host", "hostname", "address", "addr", "network address"]);
+  const CONNECTION_PASSWORDS = new Set(["password", "pwd", "passwd"]);
+  const CONNECTION_USERS = new Set(["uid", "user id", "user", "username"]);
+  const AZURE_KEYS = new Set(["accountkey", "sharedaccesskey", "sharedaccesssignature"]);
+  const QUERY_SECRETS = new Set(["token", "access_token", "refresh_token", "id_token", "auth_token", "api_key",
+    "apikey", "client_secret", "secret", "password", "passwd", "sig", "signature", "x-amz-signature",
+    "x-amz-security-token", "x-goog-signature", "session", "sessionid", "session_id", "jsessionid"]);
+  const TEXT_FIELDS = [
+    [/((?:^|[^A-Za-z0-9_.-])["']?(?:aws_secret_access_key|secret_access_key|aws_session_token)["']?[ \t]*[:=][ \t]*)(["']?)([A-Za-z0-9/+=]{16,4096})/gi, "CLOUD_CREDENTIAL"],
+    [/((?:^|[^A-Za-z0-9_-])["']?(?:x-api-key|x-auth-token|x-access-token|x-session-token|x-csrf-token|x-xsrf-token|x-amz-security-token|x-goog-api-key|auth-token)["']?[ \t]*[:=][ \t]*)(["']?)([A-Za-z0-9._~+/=:-]{8,8192})/gi, "HEADER_CREDENTIAL"],
+    [/((?:^|[^A-Za-z0-9_.-])["']?(?:session(?:[_-]?(?:id|token|key))?|sessionid|jsessionid|phpsessid|asp\.net_sessionid|csrf[_-]?token|xsrf[_-]?token)["']?[ \t]*[:=][ \t]*)(["']?)([A-Za-z0-9._~+/=%-]{8,4096})/gi, "SESSION_TOKEN"]
+  ];
+
+  function tokenLike(value) {
+    return value.length >= 8 && value.length <= 4096 && /^[A-Za-z0-9._~+/=%:-]+$/.test(value) &&
+      ((/[0-9]/.test(value) && /[A-Za-z]/.test(value)) || value.length >= 24);
+  }
+
+  function decodesToBasicPair(text) {
+    const body = text.replace(/=+$/, "");
+    if (body.length % 4 === 1 || (body.length !== text.length && text.length % 4 !== 0)) return false;
+    let buffer = 0;
+    let bits = 0;
+    let decoded = "";
+    for (let index = 0; index < body.length; index += 1) {
+      buffer = (buffer << 6) | BASE64.indexOf(body[index]);
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        const code = (buffer >> bits) & 255;
+        if (code < 32 || code > 126) return false;
+        decoded += String.fromCharCode(code);
+      }
+      buffer &= (1 << bits) - 1;
+    }
+    const colon = decoded.indexOf(":");
+    return colon > 0 && colon < decoded.length - 1;
+  }
+
+  function scanCookies(text, index, setCookie, push) {
+    const pair = /[ \t]*([^\s=;,"]{1,256})=/y;
+    while (index < text.length) {
+      pair.lastIndex = index;
+      if (!pair.exec(text)) return;
+      let start = pair.lastIndex;
+      const quoted = text[start] === '"';
+      if (quoted) start += 1;
+      let end = start;
+      while (end < text.length && !/[\s";,\\]/.test(text[end])) end += 1;
+      if (quoted && text[end] !== '"') return;
+      if (end > start && !existingMarker(text.slice(start, end))) push(start, end, "COOKIE_VALUE");
+      index = quoted ? end + 1 : end;
+      if (setCookie || text[index] !== ";") return;
+      index += 1;
+    }
+  }
+
+  // Reads a contiguous ;-delimited key=value chain (ODBC/ADO/Azure syntax).
+  function readChain(text, index) {
+    const pairs = [];
+    const keyPattern = /([A-Za-z][A-Za-z0-9 _.]{0,31}?)[ \t]*=[ \t]*/y;
+    while (pairs.length < 64) {
+      keyPattern.lastIndex = index;
+      const match = keyPattern.exec(text);
+      if (!match) break;
+      let start = keyPattern.lastIndex;
+      let end;
+      let next;
+      const open = text[start];
+      if (open === "{" || open === '"' || open === "'") {
+        const close = open === "{" ? "}" : open;
+        end = start + 1;
+        while (end < text.length && text[end] !== "\n" && text[end] !== "\r" &&
+          !(text[end] === close && text[end + 1] !== close)) end += text[end] === close ? 2 : 1;
+        if (text[end] !== close) break;
+        next = end + 1;
+        start += 1;
+      } else {
+        end = start;
+        let space = -1;
+        while (end < text.length && !/[;\r\n"'`]/.test(text[end])) {
+          if (text[end] === " " || text[end] === "\t") { if (space === -1) space = end; }
+          else if (text[end] === "=" && space !== -1) { end = space; break; }
+          end += 1;
+        }
+        next = end;
+        while (end > start && (text[end - 1] === " " || text[end - 1] === "\t")) end -= 1;
+      }
+      pairs.push({ key: match[1].trim().toLowerCase(), start: start, end: end });
+      index = next;
+      while (text[index] === " " || text[index] === "\t") index += 1;
+      if (text[index] !== ";") break;
+      index += 1;
+      while (text[index] === " " || text[index] === "\t") index += 1;
+    }
+    return { pairs: pairs, end: index };
+  }
+
+  function scanConnectionStrings(text, push) {
+    const starts = /[\s"'`({,][A-Za-z]/g;
+    let index = /^[A-Za-z]/.test(text) ? 0 : -1;
+    let match;
+    while (true) {
+      if (index === -1) {
+        match = starts.exec(text);
+        if (!match) break;
+        index = match.index + 1;
+      }
+      const chain = readChain(text, index);
+      starts.lastIndex = Math.max(starts.lastIndex, chain.end, index);
+      index = -1;
+      const connection = chain.pairs.length >= 2 && chain.pairs.some(function (pair) { return CONNECTION_MARKERS.has(pair.key); });
+      chain.pairs.forEach(function (pair) {
+        const value = text.slice(pair.start, pair.end);
+        if (!value || existingMarker(value)) return;
+        if (AZURE_KEYS.has(pair.key) && value.length >= 8) push(pair.start, pair.end, "CLOUD_CREDENTIAL");
+        else if (connection && CONNECTION_PASSWORDS.has(pair.key)) push(pair.start, pair.end, "CONNECTION_STRING_PASSWORD");
+        else if (connection && CONNECTION_USERS.has(pair.key) && /^[\p{L}\p{N}][\p{L}\p{N}\p{M}._@\\-]{1,127}$/u.test(value)) push(pair.start, pair.end, "USERNAME");
+      });
+    }
+    const jdbc = /\bjdbc:[A-Za-z0-9]{1,32}:[^\s"'<>`]{1,8192}/gi;
+    while ((match = jdbc.exec(text)) !== null) {
+      const token = match[0];
+      const offset = match.index;
+      const oracle = /^jdbc:oracle:(?:thin|oci):([^\/@\s;:]{1,128})\/([^@\s]{1,256})@/i.exec(token);
+      if (oracle) {
+        const passwordStart = offset + oracle[0].length - 1 - oracle[2].length;
+        push(passwordStart - 1 - oracle[1].length, passwordStart - 1, "USERNAME");
+        push(passwordStart, passwordStart + oracle[2].length, "CONNECTION_STRING_PASSWORD");
+      }
+      const parameter = /[;?&]([A-Za-z][A-Za-z0-9_.-]{0,31})=([^;&\s]*)/g;
+      let found;
+      while ((found = parameter.exec(token)) !== null) {
+        const key = found[1].toLowerCase();
+        const start = offset + found.index + found[0].length - found[2].length;
+        if (!found[2] || existingMarker(found[2])) continue;
+        if (CONNECTION_PASSWORDS.has(key)) push(start, start + found[2].length, "CONNECTION_STRING_PASSWORD");
+        else if (CONNECTION_USERS.has(key)) push(start, start + found[2].length, "USERNAME");
+      }
+    }
+  }
+
+  function webhookPrefix(host, path) {
+    let match = null;
+    if (host === "hooks.slack.com") match = /^\/(?:services|workflows|triggers)\//.exec(path);
+    else if (/^(?:(?:ptb|canary)\.)?discord(?:app)?\.com$/.test(host)) match = /^\/api\/(?:v\d{1,2}\/)?webhooks\//.exec(path);
+    else if (/\.webhook\.office\.com$/.test(host)) match = /^\/webhookb2\//.exec(path);
+    else if (host === "outlook.office.com" || host === "outlook.office365.com") match = /^\/webhook\//.exec(path);
+    return match ? match[0].length : -1;
+  }
+
+  function scanUrls(text, push) {
+    const url = /([A-Za-z][A-Za-z0-9+.-]{1,31}):\/\/([^\s"'<>\\`]{1,8192})/g;
+    let match;
+    while ((match = url.exec(text)) !== null) {
+      const base = match.index + match[1].length + 3;
+      const body = match[2].replace(/[.,;:!?)\]}]+$/, "");
+      let authorityEnd = body.search(/[/?#]/);
+      if (authorityEnd === -1) authorityEnd = body.length;
+      const authority = body.slice(0, authorityEnd);
+      const at = authority.lastIndexOf("@");
+      if (at > 0) {
+        const colon = authority.indexOf(":");
+        if (colon !== -1 && colon < at - 1 && !existingMarker(authority.slice(0, at)) && !existingMarker(authority.slice(colon + 1, at))) push(base, base + at, "URL_CREDENTIALS");
+      }
+      const host = authority.slice(at + 1).replace(/:\d{1,5}$/, "").toLowerCase();
+      let pathEnd = body.slice(authorityEnd).search(/[?#]/);
+      pathEnd = pathEnd === -1 ? body.length : authorityEnd + pathEnd;
+      const prefix = webhookPrefix(host, body.slice(authorityEnd, pathEnd));
+      if (prefix !== -1 && pathEnd - authorityEnd - prefix >= 8) push(base + authorityEnd + prefix, base + pathEnd, "WEBHOOK_SECRET");
+      if (body[pathEnd] !== "?") continue;
+      const queryEnd = body.indexOf("#", pathEnd) === -1 ? body.length : body.indexOf("#", pathEnd);
+      let cursor = pathEnd + 1;
+      while (cursor < queryEnd) {
+        let next = body.indexOf("&", cursor);
+        if (next === -1 || next > queryEnd) next = queryEnd;
+        const equals = body.indexOf("=", cursor);
+        if (equals !== -1 && equals < next) {
+          const value = body.slice(equals + 1, next);
+          if (QUERY_SECRETS.has(body.slice(cursor, equals).toLowerCase()) && value.length >= 4 && !existingMarker(value)) {
+            push(base + equals + 1, base + next, "URL_QUERY_SECRET");
+          }
+        }
+        cursor = next + 1;
+      }
+    }
+  }
+
+  function scanNetwork(text, options, push) {
+    const word = /[A-Za-z0-9_]/;
+    const run = /[0-9A-Fa-f:.]{2,}/g;
+    let match;
+    while ((match = run.exec(text)) !== null) {
+      let start = match.index;
+      let value = match[0];
+      const first = value.indexOf(":");
+      if (first === -1 || value.indexOf(":", first + 1) === -1) continue;
+      if (value[0] === ":" && value[1] !== ":") { start += 1; value = value.slice(1); }
+      value = value.replace(/\.+$/, "");
+      if (/[^:]:$/.test(value)) value = value.slice(0, -1);
+      let end = start + value.length;
+      if (word.test(text[start - 1] || "") || hasVersionFieldPrefix(text, start)) continue;
+      if (/^[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}$/.test(value)) {
+        // All-decimal sextets are ambiguous with build/time IDs and stay unflagged.
+        if (/[A-Fa-f]/.test(value) && !word.test(text[end] || "")) push(start, end, "MAC_ADDRESS", "hardware", value.toLowerCase());
+        continue;
+      }
+      const groups = parseIpv6(value);
+      // Require a decimal digit so hex-word scopes such as dead::beef or cafe::face stay unflagged.
+      if (!/[0-9]/.test(value) || !groups || groups.every(function (group) { return group === 0; })) continue;
+      const kind = ipv6Kind(groups);
+      if (kind === "link-local" && text[end] === "%") {
+        const zone = /^%[A-Za-z0-9_-]{1,32}/.exec(text.slice(end, end + 34));
+        if (zone) end += zone[0].length;
+      }
+      if (word.test(text[end] || "") || (kind === "loopback" && !options.includeLoopback)) continue;
+      push(start, end, "IPV6_ADDRESS", kind, groups.map(function (group) { return group.toString(16); }).join(":"));
+    }
+    const dashed = /(^|[^A-Za-z0-9_-])([0-9A-Fa-f]{2}(?:-[0-9A-Fa-f]{2}){5})(?![A-Za-z0-9_-])/g;
+    while ((match = dashed.exec(text)) !== null) {
+      const start = match.index + match[1].length;
+      if (!/[A-Fa-f]/.test(match[2]) || hasVersionFieldPrefix(text, start)) continue;
+      push(start, start + match[2].length, "MAC_ADDRESS", "hardware", match[2].toLowerCase().replace(/-/g, ":"));
+    }
+  }
+
+  function scanPrivateKeys(text, push) {
+    const begin = /-----BEGIN ((?:RSA |DSA |EC |OPENSSH |ENCRYPTED |PGP )?PRIVATE KEY(?: BLOCK)?)-----/g;
+    let match;
+    while ((match = begin.exec(text)) !== null) {
+      const closing = "-----END " + match[1] + "-----";
+      const found = text.indexOf(closing, begin.lastIndex);
+      const end = found === -1 ? text.length : found + closing.length;
+      push(match.index, end, "PRIVATE_KEY");
+      begin.lastIndex = end;
+    }
+  }
+
+  function collectExtended(text, options, push) {
+    let match;
+    scanPrivateKeys(text, push);
+    const github = /(^|[^A-Za-z0-9_])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59})(?![A-Za-z0-9_])/g;
+    while ((match = github.exec(text)) !== null) push(match.index + match[1].length, match.index + match[0].length, "GITHUB_TOKEN");
+    const google = /(^|[^A-Za-z0-9_-])(AIza[0-9A-Za-z_-]{35})(?![A-Za-z0-9_-])/g;
+    while ((match = google.exec(text)) !== null) push(match.index + match[1].length, match.index + match[0].length, "GOOGLE_API_KEY");
+    TEXT_FIELDS.forEach(function (field) {
+      const pattern = field[0];
+      pattern.lastIndex = 0;
+      while ((match = pattern.exec(text)) !== null) {
+        if (field[1] === "SESSION_TOKEN" && !tokenLike(match[3])) continue;
+        if (existingMarker(match[3])) continue;
+        const start = match.index + match[1].length + match[2].length;
+        push(start, start + match[3].length, field[1]);
+      }
+    });
+    const basic = /\bBasic[ \t]+([A-Za-z0-9+/]{8,4096}={0,2})(?![A-Za-z0-9+/=])/gi;
+    while ((match = basic.exec(text)) !== null) {
+      if (decodesToBasicPair(match[1])) push(match.index + match[0].length - match[1].length, match.index + match[0].length, "BASIC_CREDENTIALS");
+    }
+    const cookie = /(^|[^A-Za-z0-9_-])((?:set-)?cookie)[ \t]*:[ \t]*/gi;
+    while ((match = cookie.exec(text)) !== null) scanCookies(text, cookie.lastIndex, /^set-/i.test(match[2]), push);
+    scanConnectionStrings(text, push);
+    scanUrls(text, push);
+    if (options.redactIpAddresses !== false) scanNetwork(text, options, push);
+  }
+
   function collect(source, options) {
     const candidates = [];
+    function push(start, end, category, networkKind, value) {
+      if (end <= start) return;
+      if (candidates.length >= LIMITS.maxCandidates) fail("FINDING_LIMIT");
+      candidates.push({ start: start, end: end, detector: BY_CATEGORY[category], networkKind: networkKind,
+        value: value, contextual: !networkKind });
+    }
+    collectExtended(source, options, push);
     buildRules(options).forEach(function (rule) {
       let match;
       while ((match = rule.pattern.exec(source)) !== null) {
@@ -515,8 +876,13 @@
       return a.start - b.start || b.detector.priority - a.detector.priority || b.end - a.end;
     });
     const resolved = [];
+    // URL userinfo is a closed span: weaker matches starting inside it (e.g. pass@host read as an
+    // email) are dropped instead of widening the replacement over the host/port context.
+    let closed = null;
     candidates.forEach(function (candidate) {
       const previous = resolved[resolved.length - 1];
+      if (closed && candidate !== closed && candidate.start < closed.end && candidate.detector.priority < closed.detector.priority) return;
+      if (candidate.detector.category === "URL_CREDENTIALS" && (!closed || candidate.end > closed.end)) closed = candidate;
       if (previous && candidate.start < previous.end) {
         previous.end = Math.max(previous.end, candidate.end);
         if (candidate.detector.priority > previous.detector.priority) {
@@ -562,7 +928,7 @@
       let policyReason = action === "KEEP" ? "category-preserved" : "category-redacted";
       if (detector.control === "network" && action === "REDACT" &&
         ((candidate.networkKind === "loopback" && policy.network.preserveLoopback) ||
-        (candidate.networkKind === "private" && policy.network.preservePrivate))) {
+        ((candidate.networkKind === "private" || candidate.networkKind === "unique-local") && policy.network.preservePrivate))) {
         action = "KEEP";
         policyReason = "network-context-preserved";
       }
@@ -619,7 +985,7 @@
       else count.kept += 1;
     });
     CONTROLS.forEach(function (control) { Object.freeze(counts[control]); });
-    return Object.freeze({ engineVersion: 6, profile: policy.name, mode: policy.mode, policy: policy,
+    return Object.freeze({ engineVersion: 7, profile: policy.name, mode: policy.mode, policy: policy,
       format: analysis.format, parseStatus: analysis.parseStatus,
       inputLength: length, inputLines: analysis.inputLines, totalFindings: findings.length,
       redacted: redacted, kept: findings.length - redacted,
